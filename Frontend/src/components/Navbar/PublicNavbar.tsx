@@ -1,9 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
-import { Home, ChevronDown, LogOut, Settings, MessageCircle, Menu, X, FileText } from "lucide-react";
+import {
+  Home, ChevronDown, LogOut, Settings, MessageCircle, Menu, X, FileText,
+  Shield, Users, CreditCard, RotateCcw, PlusCircle,
+} from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import chatService from "../../services/chatService";
 import socketService from "../../services/socketService";
+import { getKYCStatus, getAgreements, getRefundRequests } from "../../services/api";
 import NotificationsDropdown from "./NotificationsDropdown";
 import type { MessagePayload } from "../../type";
 
@@ -14,6 +18,9 @@ export default function PublicNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [unread, setUnread] = useState(0);
+  const [kycPending, setKycPending] = useState(false);
+  const [unsignedCount, setUnsignedCount] = useState(0);
+  const [pendingRefundCount, setPendingRefundCount] = useState(0);
 
   const refreshUnread = useCallback(() => {
     if (!user?.id) return;
@@ -25,10 +32,24 @@ export default function PublicNavbar() {
     });
   }, [user]);
 
+  const fetchBadges = useCallback(async () => {
+    if (!user) return;
+    const isOwner = user.user_type === "owner";
+    if (isOwner) {
+      const kyc = await getKYCStatus();
+      setKycPending(kyc?.status === "pending" || kyc?.status === "not_submitted");
+      const ags = await getAgreements();
+      setUnsignedCount(ags.filter((a: any) => a.status === "pending_landlord").length);
+      const refunds = await getRefundRequests();
+      setPendingRefundCount(refunds.filter((r: any) => r.status === "pending").length);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user?.id) return;
     refreshUnread();
-  }, [user, refreshUnread]);
+    fetchBadges();
+  }, [user, refreshUnread, fetchBadges]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -40,25 +61,34 @@ export default function PublicNavbar() {
         refreshUnread();
       }
     };
-    const handleNotification = () => refreshUnread();
+    const handleNotification = () => { refreshUnread(); fetchBadges(); };
 
     socketService.onMessageReceived(handleMessage);
     socketService.onNewNotification(handleNotification);
 
-    const pollInterval = setInterval(() => refreshUnread(), 10000);
+    const pollInterval = setInterval(() => { refreshUnread(); fetchBadges(); }, 15000);
 
     return () => {
       socketService.removeListener("receive-message");
       socketService.removeListener("new-notification");
       clearInterval(pollInterval);
     };
-  }, [user, refreshUnread]);
+  }, [user, refreshUnread, fetchBadges]);
 
   const role = user?.user_type;
 
   const handleLogout = () => {
     logout();
     navigate("/");
+  };
+
+  const handleNav = (to: string) => {
+    setIsMenuOpen(false);
+    if (location.pathname === to) {
+      navigate(0);
+    } else {
+      navigate(to);
+    }
   };
 
   const avatar = user
@@ -82,6 +112,31 @@ export default function PublicNavbar() {
             ]
           : []),
         { to: "/about", label: "About Us" },
+      ];
+
+  const isOwner = role === "owner";
+
+  const menuItems = isOwner
+    ? [
+        { section: "Account", items: [
+          { label: "Profile Settings", icon: Settings, to: "/profile" },
+          { label: "Complete KYC", icon: Shield, to: "/kyc", badge: kycPending ? "pending" : null },
+        ]},
+        { section: "Management", items: [
+          { label: "View Tenants", icon: Users, to: "/tenant" },
+          { label: "Agreements", icon: FileText, to: "/landlord/agreements", badge: unsignedCount > 0 ? unsignedCount : null },
+          { label: "Payment History", icon: CreditCard, to: "/payment-history" },
+          { label: "Refund Requests", icon: RotateCcw, to: "/refunds", badge: pendingRefundCount > 0 ? pendingRefundCount : null },
+        ]},
+        { section: "Actions", items: [
+          { label: "Add Property", icon: PlusCircle, to: "/add-property" },
+        ]},
+      ]
+    : [
+        { section: "", items: [
+          { label: "Profile Settings", icon: Settings, to: "/profile" },
+          { label: "Agreements", icon: FileText, to: "/agreements" },
+        ]},
       ];
 
   return (
@@ -127,7 +182,7 @@ export default function PublicNavbar() {
               <div className="relative">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100"
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition"
                 >
                   <div className="w-8 h-8 bg-[#A989C8] text-white rounded-xl flex items-center justify-center font-bold text-sm">
                     {avatar}
@@ -135,25 +190,62 @@ export default function PublicNavbar() {
                   <span className="hidden lg:block font-medium text-gray-800 text-sm">
                     {fullName}
                   </span>
-                  <ChevronDown className="text-gray-400 w-4 h-4" />
+                  <ChevronDown className={`text-gray-400 w-4 h-4 transition-transform ${isMenuOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {isMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border py-2 z-50">
-                    <Link
-                      to="/profile"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-50 font-medium rounded-lg text-sm"
-                    >
-                      <Settings size={16} />
-                      Profile Settings
-                    </Link>
+                  <div className="absolute right-0 mt-2 w-[300px] bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-fadeIn">
+                    {/* Header */}
+                    <div className="px-4 py-3 flex items-center gap-3 border-b border-gray-100">
+                      <div className="w-10 h-10 bg-[#A989C8] text-white rounded-xl flex items-center justify-center font-bold text-sm">
+                        {avatar}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{fullName}</p>
+                        <p className="text-xs text-gray-400 truncate">{user?.email || ""}</p>
+                      </div>
+                    </div>
+
+                    {/* Menu sections */}
+                    {menuItems.map((section, si) => (
+                      <div key={si}>
+                        {section.section && (
+                          <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            {section.section}
+                          </p>
+                        )}
+                        {section.items.map((item, ii) => (
+                          <button
+                            key={`${si}-${ii}`}
+                            onClick={() => handleNav(item.to)}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#A989C8] transition text-left"
+                          >
+                            <item.icon size={17} className="shrink-0" />
+                            <span className="flex-1">{item.label}</span>
+                            {item.badge !== null && item.badge !== undefined && item.badge !== false && (
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                typeof item.badge === "number"
+                                  ? "bg-red-100 text-red-600"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}>
+                                {typeof item.badge === "number" ? item.badge : "pending"}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+
+                    {/* Divider before Logout */}
+                    <hr className="my-1 mx-4 border-gray-100" />
+
+                    {/* Logout */}
                     <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 px-4 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg font-medium text-sm"
+                      onClick={() => { setIsMenuOpen(false); handleLogout(); }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition"
                     >
-                      <LogOut size={16} />
-                      Logout
+                      <LogOut size={17} className="shrink-0" />
+                      <span className="font-medium">Logout</span>
                     </button>
                   </div>
                 )}
@@ -210,25 +302,32 @@ export default function PublicNavbar() {
                   <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold">{unread}</span>
                 )}
               </Link>
-              <Link
-                to={role === "owner" ? "/landlord/agreements" : "/agreements"}
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:text-[#A989C8] hover:bg-gray-50"
-              >
-                <FileText size={18} />
-                Agreements
-              </Link>
-              <Link
-                to="/profile"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:text-[#A989C8] hover:bg-gray-50"
-              >
-                <Settings size={18} />
-                Profile Settings
-              </Link>
+              {menuItems.map((section, si) => (
+                <div key={si}>
+                  {section.items.map((item, ii) => (
+                    <button
+                      key={`${si}-${ii}`}
+                      onClick={() => { setMobileOpen(false); handleNav(item.to); }}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:text-[#A989C8] hover:bg-gray-50 text-left"
+                    >
+                      <item.icon size={18} />
+                      <span className="flex-1">{item.label}</span>
+                      {item.badge !== null && item.badge !== undefined && item.badge !== false && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          typeof item.badge === "number"
+                            ? "bg-red-100 text-red-600"
+                            : "bg-amber-100 text-amber-700"
+                        }`}>
+                          {typeof item.badge === "number" ? item.badge : "pending"}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ))}
               <button
-                onClick={() => { handleLogout(); setMobileOpen(false); }}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50"
+                onClick={() => { setMobileOpen(false); handleLogout(); }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 w-full text-left"
               >
                 <LogOut size={18} />
                 Logout

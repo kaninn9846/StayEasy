@@ -33,6 +33,14 @@ export const getRecentActivity = async () => {
     return [];
   }
 };
+export const getRefundRequests = async () => {
+  try {
+    const response = await API.get("landlord/refunds/");
+    return response.data || [];
+  } catch (error) {
+    return [];
+  }
+};
 export const getProfile = async () => {
   try {
     const response = await API.get("profile/");
