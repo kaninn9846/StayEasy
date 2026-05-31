@@ -6,8 +6,6 @@ import {
   Trash2,
   X,
   Smile,
-  Maximize2,
-  Minimize2,
   ChevronLeft,
 } from "lucide-react";
 import socketService from "../../services/socketService";
@@ -91,16 +89,21 @@ export default function ConversationWindow({
 
     const handleMessage = (msg: MessagePayload) => {
       setMessages((prev) => {
-        if (prev.some((m) => String(m.id) === String(msg.id))) return prev;
+        if (msg.userId === currentUser.id) {
+          return prev;
+        }
+        if (prev.some((m) => m.id === Number(msg.id) || m.id === Number(msg.senderId))) {
+          return prev;
+        }
         return [
           ...prev,
           {
             id: Number(msg.id) || Date.now(),
-            content: msg.message || msg.content,
+            content: msg.message || msg.content || "",
             sender_name: msg.userName || msg.sender_name || "",
             sender_type: (msg.userType || msg.sender_type || "user") as "user" | "landlord",
             sender_user: msg.userType === "user" ? (msg.userId ?? null) : null,
-            sender_landlord: null,
+            sender_landlord: msg.userType === "landlord" ? (msg.userId ?? null) : null,
             image_url: msg.imageUrl || "",
             caption: msg.caption || "",
             is_read: true,
@@ -130,7 +133,7 @@ export default function ConversationWindow({
               sender_name: m.userName || m.sender_name || "",
               sender_type: (m.userType || m.sender_type || "user") as "user" | "landlord",
               sender_user: m.userType === "user" ? (m.userId ?? null) : null,
-              sender_landlord: null,
+              sender_landlord: m.userType === "landlord" ? (m.userId ?? null) : null,
               image_url: m.imageUrl || "",
               caption: m.caption || "",
               is_read: true,
@@ -161,6 +164,21 @@ export default function ConversationWindow({
     setInput("");
     setShowEmoji(false);
 
+    const optimisticMsg: MessageData = {
+      id: -Date.now(),
+      content: text,
+      sender_name: displayName,
+      sender_type: effectiveUserType as "user" | "landlord",
+      sender_user: effectiveUserType === "user" ? currentUser.id : null,
+      sender_landlord: effectiveUserType === "landlord" ? myLandlordId ?? null : null,
+      image_url: "",
+      caption: "",
+      is_read: true,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    scrollToBottom();
+
     socketService.sendMessage({
       roomId,
       message: text,
@@ -189,6 +207,21 @@ export default function ConversationWindow({
     try {
       const res = await socketService.uploadImage(file);
       if (res?.imageUrl) {
+        const optimisticMsg: MessageData = {
+          id: -Date.now(),
+          content: caption || "",
+          sender_name: displayName,
+          sender_type: effectiveUserType as "user" | "landlord",
+          sender_user: effectiveUserType === "user" ? currentUser.id : null,
+          sender_landlord: effectiveUserType === "landlord" ? myLandlordId ?? null : null,
+          image_url: res.imageUrl,
+          caption: caption || "",
+          is_read: true,
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, optimisticMsg]);
+        scrollToBottom();
+
         socketService.sendImage({
           roomId,
           imageUrl: res.imageUrl,
@@ -266,7 +299,7 @@ export default function ConversationWindow({
           {group.messages.map((msg) => {
             const mine = isOwn(msg);
             return (
-              <div key={msg.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
+              <div key={msg.id} className={`message-enter flex flex-col ${mine ? "items-end" : "items-start"}`}>
                 {!mine && msg.sender_name && (
                   <span className="text-[11px] text-gray-500 px-1 mb-0.5">{msg.sender_name}</span>
                 )}
@@ -300,9 +333,11 @@ export default function ConversationWindow({
         </div>
       ))}
       {typing && (
-        <div className="flex items-start">
-          <div className="px-4 py-2 rounded-lg bg-white border text-gray-500 text-sm italic">
-            typing...
+        <div className="flex items-start pl-1">
+          <div className="px-4 py-3 rounded-lg bg-white border flex items-center gap-1">
+            <span className="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full inline-block" />
+            <span className="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full inline-block" />
+            <span className="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full inline-block" />
           </div>
         </div>
       )}

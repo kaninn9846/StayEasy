@@ -7,12 +7,7 @@ from .views import (
     ForgotPasswordView,
     ResetPasswordView,
     RecentActivityView,
-    CreateBookingRequestView,
-    TenantBookingRequestListView,
-    LandlordBookingRequestListView,
-    BookingRequestDetailView,
-    BookingRequestActionView,
-    RetryPaymentView,
+    CreatePaymentFailureInquiryView,
     ProfileView,
     LandlordRegisterView,
     LandlordLoginView,
@@ -236,12 +231,7 @@ urlpatterns = [
     path('agreements/<int:agreement_id>/pdf/', AgreementPDFView.as_view(), name='agreement-pdf'),
 
     # =====================================================
-    # BOOKING REQUEST ENDPOINTS
+    # PAYMENT FAILURE INQUIRY
     # =====================================================
-    path('booking-requests/create/', CreateBookingRequestView.as_view(), name='booking-request-create'),
-    path('booking-requests/my-requests/', TenantBookingRequestListView.as_view(), name='booking-request-my'),
-    path('booking-requests/received/', LandlordBookingRequestListView.as_view(), name='booking-request-received'),
-    path('booking-requests/<int:pk>/', BookingRequestDetailView.as_view(), name='booking-request-detail'),
-    path('booking-requests/<int:pk>/action/', BookingRequestActionView.as_view(), name='booking-request-action'),
-    path('booking-requests/<int:pk>/retry-payment/', RetryPaymentView.as_view(), name='booking-request-retry-payment'),
+    path('payment-failure-inquiry/', CreatePaymentFailureInquiryView.as_view(), name='payment-failure-inquiry'),
 ]

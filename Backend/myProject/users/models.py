@@ -150,7 +150,6 @@ class Property(models.Model):
     STATUS_CHOICES = (
         ('draft', 'Draft'),
         ('published', 'Published'),
-        ('reserved', 'Reserved'),
         ('booked', 'Booked'),
         ('archived', 'Archived'),
     )
@@ -190,11 +189,6 @@ class Property(models.Model):
 
     def __str__(self):
         return self.title
-
-    def is_reserved(self):
-        return self.status == 'reserved' or BookingRequest.objects.filter(
-            property=self, status__in=['approved', 'payment_pending']
-        ).exists()
 
 
 # ============================================================
@@ -556,11 +550,7 @@ class Notification(models.Model):
         ('agreement_landlord_signed', 'Agreement Signed by Landlord'),
         ('agreement_activated', 'Agreement Activated'),
         ('agreement_expiring', 'Agreement Expiring Soon'),
-        ('booking_request_created', 'Booking Request Created'),
-        ('booking_request_approved', 'Booking Request Approved'),
-        ('booking_request_rejected', 'Booking Request Rejected'),
-        ('booking_request_payment_done', 'Booking Request Payment Completed'),
-        ('payment_deadline_approaching', 'Payment Deadline Approaching'),
+        ('payment_inquiry', 'Payment Failure Inquiry'),
     )
     
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
@@ -749,37 +739,21 @@ class RentalAgreement(models.Model):
 
 
 # ============================================================
-# BOOKING REQUEST MODEL
-# Allows tenants to request booking with pay-later option
+# PAYMENT FAILURE INQUIRY MODEL
+# Records when a payment fails so tenant can follow up
 # ============================================================
-class BookingRequest(models.Model):
-    """Records booking requests where tenant can pay later"""
-
-    STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('payment_pending', 'Payment Pending'),
-        ('confirmed', 'Confirmed'),
-        ('cancelled', 'Cancelled'),
+class PaymentFailureInquiry(models.Model):
+    INQUIRY_STATUS = (
+        ('open', 'Open'),
+        ('resolved', 'Resolved'),
     )
 
-    tenant = models.ForeignKey(User, on_delete=models.CASCADE, related_name="booking_requests")
-    landlord = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_booking_requests")
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="booking_requests")
-
-    message = models.TextField()
-    preferred_move_in = models.DateField()
-    expected_payment_date = models.DateField()
-    notes = models.TextField(blank=True, default='')
-
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-
-    payment_deadline = models.DateTimeField(null=True, blank=True)
-
-    # Link to booking once created
-    booking = models.ForeignKey(Booking, on_delete=models.SET_NULL, null=True, blank=True, related_name="booking_request")
-
+    tenant = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payment_inquiries")
+    landlord = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_payment_inquiries")
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="payment_inquiries")
+    booking = models.ForeignKey(Booking, on_delete=models.SET_NULL, null=True, blank=True, related_name="payment_inquiries")
+    message = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=INQUIRY_STATUS, default='open')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -787,4 +761,4 @@ class BookingRequest(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Request #{self.id} - {self.tenant.username} -> {self.property.title} ({self.get_status_display()})"
+        return f"Inquiry #{self.id} - {self.tenant.username} -> {self.property.title}"

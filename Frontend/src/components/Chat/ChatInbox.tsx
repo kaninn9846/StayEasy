@@ -121,12 +121,12 @@ export default function ChatInbox({ initialConversationId }: ChatInboxProps) {
           showSidebar ? "flex" : "hidden"
         } md:flex flex-col w-full md:w-96 border-r shrink-0`}
       >
-        <div className="px-4 pt-6 pb-3 border-b">
-          <h1 className="text-2xl font-bold text-gray-800">Messages</h1>
-          <div className="flex items-center bg-gray-100 px-3 py-2 rounded-full mt-3">
-            <Search size={18} className="text-gray-400" />
+        <div className="px-4 pt-6 pb-3 border-b border-gray-100">
+          <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Messages</h1>
+          <div className="flex items-center bg-gray-100 px-3 py-2 rounded-full mt-3 focus-within:ring-2 focus-within:ring-[#A989C8]/30 focus-within:bg-white transition-all">
+            <Search size={16} className="text-gray-400 shrink-0" />
             <input
-              className="ml-2 bg-transparent outline-none text-sm w-full"
+              className="ml-2 bg-transparent outline-none text-sm w-full placeholder-gray-400"
               placeholder="Search conversations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -151,31 +151,31 @@ export default function ChatInbox({ initialConversationId }: ChatInboxProps) {
                 <div
                   key={c.id}
                   onClick={() => handleSelect(c)}
-                  className={`px-4 py-3 border-b cursor-pointer hover:bg-gray-50 transition ${
-                    selected?.id === String(c.id) ? "bg-purple-50" : ""
+                  className={`px-4 py-3 border-b cursor-pointer hover:bg-[#A989C8]/5 active:bg-[#A989C8]/10 transition-colors ${
+                    selected?.id === String(c.id) ? "bg-[#A989C8]/10 border-l-2 border-l-[#A989C8]" : ""
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-[#A989C8] flex items-center justify-center text-white font-bold shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#A989C8] to-[#8d6aa9] flex items-center justify-center text-white font-bold shrink-0 shadow-sm">
                       {view.participantName.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-sm truncate">
+                        <span className="font-semibold text-sm truncate text-gray-800">
                           {view.participantName}
                         </span>
-                        <span className="text-[10px] text-gray-400 shrink-0 ml-2">
+                        <span className="text-[11px] text-gray-400 shrink-0 ml-2">
                           {c.updated_at
-                            ? new Date(c.updated_at).toLocaleDateString()
+                            ? new Date(c.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })
                             : ""}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center mt-0.5">
-                        <span className="text-sm text-gray-500 truncate">
-                          {view.lastMessage}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-sm truncate flex-1 ${view.unreadCount > 0 ? "font-semibold text-gray-800" : "text-gray-500"}`}>
+                          {view.lastMessage || "No messages yet"}
                         </span>
                         {view.unreadCount > 0 && (
-                          <span className="bg-[#A989C8] text-white text-[10px] rounded-full px-1.5 py-0.5 shrink-0 ml-2">
+                          <span className="bg-[#A989C8] text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shrink-0">
                             {view.unreadCount}
                           </span>
                         )}
@@ -193,7 +193,7 @@ export default function ChatInbox({ initialConversationId }: ChatInboxProps) {
       <div
         className={`${
           !showSidebar || selected ? "flex" : "hidden"
-        } md:flex flex-col flex-1 ${
+        } md:flex flex-col flex-1 animate-fadeIn ${
           !selected ? "items-center justify-center text-gray-400" : ""
         }`}
       >
@@ -207,9 +207,11 @@ export default function ChatInbox({ initialConversationId }: ChatInboxProps) {
             inline
           />
         ) : (
-          <div className="flex flex-col items-center gap-2">
-            <MessageCircle className="w-12 h-12" />
-            <p className="text-sm">Select a conversation to start chatting</p>
+          <div className="flex flex-col items-center gap-3 px-4">
+            <div className="w-16 h-16 rounded-full bg-[#A989C8]/10 flex items-center justify-center">
+              <MessageCircle className="w-8 h-8 text-[#A989C8]" />
+            </div>
+            <p className="text-sm text-gray-500 text-center">Select a conversation to start chatting</p>
           </div>
         )}
       </div>

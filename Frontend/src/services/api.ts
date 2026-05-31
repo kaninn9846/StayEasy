@@ -572,64 +572,10 @@ export const downloadAgreementPDF = async (agreementId: number) => {
   }
 };
 
-// ================= BOOKING REQUEST APIs =================
-export const createBookingRequest = async (data: {
-  property_id: number;
-  message: string;
-  preferred_move_in: string;
-  expected_payment_date: string;
-  notes?: string;
-}) => {
+// ================= PAYMENT FAILURE INQUIRY =================
+export const createPaymentFailureInquiry = async (bookingId: number) => {
   try {
-    const response = await API.post("booking-requests/create/", data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getMyBookingRequests = async () => {
-  try {
-    const response = await API.get("booking-requests/my-requests/");
-    return response.data || [];
-  } catch (error) {
-    return [];
-  }
-};
-
-export const getReceivedBookingRequests = async () => {
-  try {
-    const response = await API.get("booking-requests/received/");
-    return response.data || [];
-  } catch (error) {
-    return [];
-  }
-};
-
-export const getBookingRequestDetail = async (id: number) => {
-  try {
-    const response = await API.get(`booking-requests/${id}/`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const actionBookingRequest = async (id: number, action: "approve" | "reject", paymentDeadline?: string) => {
-  try {
-    const response = await API.post(`booking-requests/${id}/action/`, {
-      action,
-      payment_deadline: paymentDeadline || null,
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const retryBookingPayment = async (id: number) => {
-  try {
-    const response = await API.post(`booking-requests/${id}/retry-payment/`);
+    const response = await API.post("payment-failure-inquiry/", { booking_id: bookingId });
     return response.data;
   } catch (error) {
     throw error;

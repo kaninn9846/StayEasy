@@ -34,7 +34,11 @@ const EsewaPayment: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Payment error:', error);
-      setError(error.response?.data?.error || 'Failed to initiate payment. Please try again.');
+      if (bookingId) {
+        navigate(`/payment-failed/${bookingId}`);
+      } else {
+        setError(error.response?.data?.error || 'Failed to initiate payment. Please try again.');
+      }
     }
   };
 

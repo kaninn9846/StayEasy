@@ -69,8 +69,8 @@ export default function PublicNavbar() {
     const pollInterval = setInterval(() => { refreshUnread(); fetchBadges(); }, 15000);
 
     return () => {
-      socketService.removeListener("receive-message");
-      socketService.removeListener("new-notification");
+      socketService.removeListener("receive-message", handleMessage);
+      socketService.removeListener("new-notification", handleNotification as any);
       clearInterval(pollInterval);
     };
   }, [user, refreshUnread, fetchBadges]);

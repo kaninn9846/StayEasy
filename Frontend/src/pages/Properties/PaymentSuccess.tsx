@@ -75,8 +75,7 @@ const PaymentSuccess: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Payment verification error:', error);
-      setError(error.response?.data?.error || error.message || 'Payment verification failed');
-      setVerifying(false);
+      navigate(`/payment-failed/${bookingId}`);
     }
   };
 
