@@ -11,6 +11,7 @@ import socketService from "../../services/socketService";
 import StatCard from "../../components/Dashboard/StatCard";
 import QuickActions from "../../components/Dashboard/QuickActions";
 import RecentActivity from "../../components/Dashboard/RecentActivity";
+import BookingRequestsSection from "../../components/BookingRequest/BookingRequestsSection";
 import ProfileCard from "../../components/Profile/ProfileCard";
 import chatService from "../../services/chatService";
 import { toConversationView } from "../../utils/chatUtils";
@@ -358,6 +359,7 @@ const Dashboard = () => {
                 </div>
                 <div className="space-y-6">
                   <QuickActions />
+                  <BookingRequestsSection />
                   {recentTenants.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
                       <div className="flex items-center justify-between mb-4">

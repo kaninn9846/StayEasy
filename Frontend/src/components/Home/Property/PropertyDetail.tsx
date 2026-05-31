@@ -28,6 +28,8 @@ import { getPropertyDetail } from "../../../services/api";
 import { AuthContext } from "../../../context/AuthContext";
 import chatService from "../../../services/chatService";
 import { canChat, toConversationView } from "../../../utils/chatUtils";
+import RequestBookingModal from "../../BookingRequest/RequestBookingModal";
+import RequestSentModal from "../../BookingRequest/RequestSentModal";
 import ConversationWindow from "../../Chat/ConversationWindow";
 import type { ConversationView } from "../../../type";
 import axios from "axios";
@@ -53,6 +55,8 @@ export default function PropertyDetails() {
     policy_applied: string;
   } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showSentModal, setShowSentModal] = useState(false);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -499,6 +503,11 @@ export default function PropertyDetails() {
                     <p className="text-orange-700 font-bold text-sm">Currently Booked</p>
                     <p className="text-orange-600 text-xs mt-1">This property is currently occupied</p>
                   </div>
+                ) : authContext?.user?.user_type === "tenant" ? (
+                  <div className="flex gap-2 mb-3">
+                    <button onClick={() => id && navigate(`/booking/${id}`)} className="flex-1 py-3 bg-[#A989C8] hover:bg-[#8d6aa9] text-white font-bold rounded-xl shadow-lg transition text-sm">Book Now</button>
+                    <button onClick={() => setShowRequestModal(true)} className="flex-1 py-3 bg-white border-2 border-[#A989C8] text-[#A989C8] hover:bg-[#F3E8FF] font-bold rounded-xl transition text-sm">Request Booking</button>
+                  </div>
                 ) : (
                   <button onClick={() => id && navigate(`/booking/${id}`)} className="w-full py-4 bg-[#A989C8] hover:bg-[#8d6aa9] text-white font-bold rounded-xl shadow-lg transition mb-3">Book Now</button>
                 )}
@@ -679,6 +688,18 @@ export default function PropertyDetails() {
             </div>
           </div>
         </div>
+      )}
+
+      {showRequestModal && property && (
+        <RequestBookingModal
+          propertyId={property.id}
+          propertyTitle={property.title}
+          onClose={() => setShowRequestModal(false)}
+          onSuccess={() => { setShowRequestModal(false); setShowSentModal(true); }}
+        />
+      )}
+      {showSentModal && (
+        <RequestSentModal onClose={() => setShowSentModal(false)} />
       )}
     </div>
   );

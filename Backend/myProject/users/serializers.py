@@ -1,11 +1,12 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 import json
 from .models import (
     Profile, KYC, Property, PropertyImage, Booking, Favorite, ViewedProperty, 
     LandlordUser, Chat, Message, CancellationPolicy, Payment, Refund, Cancellation, Notification,
-    Warning, Suspension, ModerationAction, RentalAgreement,
+    Warning, Suspension, ModerationAction, RentalAgreement, BookingRequest,
 )
 
 
@@ -951,6 +952,108 @@ class TenantSignSerializer(serializers.Serializer):
         if not value.startswith('data:image/'):
             raise serializers.ValidationError("Invalid signature format. Must be a base64 data URL.")
         return value
+
+
+# =====================================================
+# BOOKING REQUEST SERIALIZERS
+# =====================================================
+
+class BookingRequestCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BookingRequest
+        fields = ['message', 'preferred_move_in', 'expected_payment_date', 'notes']
+
+    def validate_expected_payment_date(self, value):
+        if value <= timezone.now().date():
+            raise serializers.ValidationError("Expected payment date must be in the future.")
+        return value
+
+    def validate_preferred_move_in(self, value):
+        if value <= timezone.now().date():
+            raise serializers.ValidationError("Preferred move-in date must be in the future.")
+        return value
+
+
+class BookingRequestListSerializer(serializers.ModelSerializer):
+    tenant_name = serializers.SerializerMethodField()
+    tenant_phone = serializers.SerializerMethodField()
+    property_title = serializers.CharField(source='property.title', read_only=True)
+    property_city = serializers.CharField(source='property.city', read_only=True)
+    property_price = serializers.DecimalField(source='property.price', max_digits=10, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = BookingRequest
+        fields = [
+            'id', 'status', 'message', 'preferred_move_in', 'expected_payment_date',
+            'notes', 'payment_deadline', 'tenant_name', 'tenant_phone',
+            'property_title', 'property_city', 'property_price',
+            'created_at', 'updated_at',
+        ]
+
+    def get_tenant_name(self, obj):
+        return f"{obj.tenant.first_name} {obj.tenant.last_name}".strip() or obj.tenant.username
+
+    def get_tenant_phone(self, obj):
+        profile = getattr(obj.tenant, 'profile', None)
+        return profile.phone if profile else ''
+
+
+class BookingRequestDetailSerializer(serializers.ModelSerializer):
+    tenant_name = serializers.SerializerMethodField()
+    tenant_email = serializers.EmailField(source='tenant.email', read_only=True)
+    tenant_phone = serializers.SerializerMethodField()
+    landlord_name = serializers.SerializerMethodField()
+    landlord_email = serializers.EmailField(source='landlord.email', read_only=True)
+    landlord_phone = serializers.SerializerMethodField()
+    property_title = serializers.CharField(source='property.title', read_only=True)
+    property_address = serializers.SerializerMethodField()
+    property_price = serializers.DecimalField(source='property.price', max_digits=10, decimal_places=2, read_only=True)
+    property_images = serializers.SerializerMethodField()
+    has_booking = serializers.SerializerMethodField()
+    booking_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BookingRequest
+        fields = [
+            'id', 'status', 'message', 'preferred_move_in', 'expected_payment_date',
+            'notes', 'payment_deadline', 'created_at', 'updated_at',
+            'tenant_name', 'tenant_email', 'tenant_phone',
+            'landlord_name', 'landlord_email', 'landlord_phone',
+            'property_title', 'property_address', 'property_price', 'property_images',
+            'has_booking', 'booking_id',
+        ]
+
+    def get_tenant_name(self, obj):
+        return f"{obj.tenant.first_name} {obj.tenant.last_name}".strip() or obj.tenant.username
+
+    def get_tenant_phone(self, obj):
+        profile = getattr(obj.tenant, 'profile', None)
+        return profile.phone if profile else ''
+
+    def get_landlord_name(self, obj):
+        return f"{obj.landlord.first_name} {obj.landlord.last_name}".strip() or obj.landlord.username
+
+    def get_landlord_phone(self, obj):
+        profile = getattr(obj.landlord, 'profile', None)
+        return profile.phone if profile else ''
+
+    def get_property_address(self, obj):
+        return f"{obj.property.address}, {obj.property.city}"
+
+    def get_property_images(self, obj):
+        return [img.image.url for img in obj.property.images.all()[:3]]
+
+    def get_has_booking(self, obj):
+        return obj.booking is not None
+
+    def get_booking_id(self, obj):
+        return obj.booking.id if obj.booking else None
+
+
+class BookingRequestActionSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=['approve', 'reject'])
+    payment_deadline = serializers.DateTimeField(required=False, allow_null=True)
+    admin_note = serializers.CharField(required=False, allow_blank=True, default='')
 
 
 # =====================================================

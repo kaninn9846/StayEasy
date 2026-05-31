@@ -14,7 +14,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import (
     Profile, KYC, Property, PropertyImage, Booking, Favorite, ViewedProperty, LandlordUser,
     CancellationPolicy, Payment, Refund, Cancellation, Notification,
-    Warning, Suspension, ModerationAction, RentalAgreement,
+    Warning, Suspension, ModerationAction, RentalAgreement, BookingRequest,
 )
 from .serializers import (
     RegisterSerializer,
@@ -43,6 +43,10 @@ from .serializers import (
     ModerationActionSerializer,
     ForgotPasswordSerializer,
     ResetPasswordSerializer,
+    BookingRequestCreateSerializer,
+    BookingRequestListSerializer,
+    BookingRequestDetailSerializer,
+    BookingRequestActionSerializer,
 )
 from .permissions import IsAdminUser
 from .services.esewa_service import EsewaPaymentService, create_esewa_payment_link
@@ -2485,3 +2489,210 @@ class RecentActivityView(views.APIView):
         activities = activities[:20]
 
         return Response(activities, status=status.HTTP_200_OK)
+
+
+# =====================================================
+# BOOKING REQUEST SYSTEM
+# =====================================================
+
+def _get_or_create_landlord_user(owner_user):
+    """Get or create a LandlordUser for a regular User owner"""
+    landlord_user = LandlordUser.objects.filter(email__iexact=owner_user.email).first()
+    if not landlord_user:
+        landlord_user = LandlordUser.objects.create(
+            email=owner_user.email,
+            password='',  # Not used for auth
+            name=f"{owner_user.first_name} {owner_user.last_name}".strip() or owner_user.username,
+        )
+    return landlord_user
+
+
+def _get_or_create_chat(tenant, landlord_user, property_obj):
+    """Get or create a chat between tenant and landlord"""
+    chat, _ = Chat.objects.get_or_create(
+        user=tenant,
+        landlord=landlord_user,
+        property=property_obj,
+        defaults={'subject': f"Booking Request - {property_obj.title}"},
+    )
+    return chat
+
+
+class CreateBookingRequestView(APIView):
+    """Tenant: Create a booking request with pay-later"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request):
+        active_suspension = Suspension.objects.filter(user=request.user, is_active=True).first()
+        if active_suspension:
+            return Response({"error": "Your account is suspended."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = BookingRequestCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        property_id = request.data.get('property_id')
+        if not property_id:
+            return Response({"error": "property_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            property_obj = Property.objects.get(id=property_id, available=True)
+        except Property.DoesNotExist:
+            return Response({"error": "Property not found or unavailable"}, status=status.HTTP_404_NOT_FOUND)
+
+        if property_obj.owner == request.user:
+            return Response({"error": "You cannot request your own property"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check existing pending request
+        existing = BookingRequest.objects.filter(
+            tenant=request.user, property=property_obj,
+            status__in=['pending', 'approved', 'payment_pending']
+        ).first()
+        if existing:
+            return Response({"error": f"You already have a {existing.status} request for this property"}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking_request = BookingRequest.objects.create(
+            tenant=request.user,
+            landlord=property_obj.owner,
+            property=property_obj,
+            message=serializer.validated_data['message'],
+            preferred_move_in=serializer.validated_data['preferred_move_in'],
+            expected_payment_date=serializer.validated_data['expected_payment_date'],
+            notes=serializer.validated_data.get('notes', ''),
+            status='pending',
+        )
+
+        # Notify landlord
+        Notification.objects.create(
+            recipient=property_obj.owner,
+            notification_type='booking_request_created',
+            title='New Booking Request',
+            message=f"{request.user.get_full_name() or request.user.username} wants to book {property_obj.title}.",
+            related_entity_type='booking_request',
+            related_entity_id=booking_request.id,
+        )
+
+        # Create chat
+        landlord_user = _get_or_create_landlord_user(property_obj.owner)
+        _get_or_create_chat(request.user, landlord_user, property_obj)
+
+        return Response(BookingRequestDetailSerializer(booking_request).data, status=status.HTTP_201_CREATED)
+
+
+class TenantBookingRequestListView(generics.ListAPIView):
+    """Tenant: List own booking requests"""
+    serializer_class = BookingRequestListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return BookingRequest.objects.filter(tenant=self.request.user)
+
+
+class LandlordBookingRequestListView(generics.ListAPIView):
+    """Landlord: List received booking requests"""
+    serializer_class = BookingRequestListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return BookingRequest.objects.filter(landlord=self.request.user)
+
+
+class BookingRequestDetailView(generics.RetrieveAPIView):
+    """Get full details of a booking request"""
+    serializer_class = BookingRequestDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return BookingRequest.objects.filter(
+            models.Q(tenant=user) | models.Q(landlord=user)
+        )
+
+
+class BookingRequestActionView(APIView):
+    """Landlord: Approve or reject a booking request"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        try:
+            booking_request = BookingRequest.objects.get(id=pk, landlord=request.user)
+        except BookingRequest.DoesNotExist:
+            return Response({"error": "Booking request not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if booking_request.status != 'pending':
+            return Response({"error": f"Request is already {booking_request.status}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = BookingRequestActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        action = serializer.validated_data['action']
+
+        if action == 'reject':
+            booking_request.status = 'rejected'
+            booking_request.save()
+
+            Notification.objects.create(
+                recipient=booking_request.tenant,
+                notification_type='booking_request_rejected',
+                title='Booking Request Rejected',
+                message=f"Your booking request for {booking_request.property.title} has been rejected.",
+                related_entity_type='booking_request',
+                related_entity_id=booking_request.id,
+            )
+
+            return Response({'status': 'rejected', 'message': 'Request rejected'})
+
+        # Approve
+        payment_deadline = serializer.validated_data.get('payment_deadline')
+        if not payment_deadline:
+            from datetime import timedelta
+            payment_deadline = timezone.now() + timedelta(days=3)
+
+        booking_request.status = 'approved'
+        booking_request.payment_deadline = payment_deadline
+        booking_request.save()
+
+        # Mark property as reserved
+        booking_request.property.status = 'reserved'
+        booking_request.property.available = False
+        booking_request.property.save()
+
+        Notification.objects.create(
+            recipient=booking_request.tenant,
+            notification_type='booking_request_approved',
+            title='Booking Request Approved',
+            message=f"Your booking request for {booking_request.property.title} has been approved. Please complete payment by {payment_deadline.strftime('%B %d, %Y')}.",
+            related_entity_type='booking_request',
+            related_entity_id=booking_request.id,
+        )
+
+        return Response({
+            'status': 'approved',
+            'payment_deadline': payment_deadline,
+            'message': 'Request approved. Tenant can now complete payment.',
+        })
+
+
+class RetryPaymentView(APIView):
+    """Tenant: Retry payment for an approved booking request"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            booking_request = BookingRequest.objects.get(id=pk, tenant=request.user)
+        except BookingRequest.DoesNotExist:
+            return Response({"error": "Booking request not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if booking_request.status not in ('approved', 'payment_pending'):
+            return Response({"error": f"Request is in '{booking_request.status}' status. Cannot process payment."}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking_request.status = 'payment_pending'
+        booking_request.save()
+
+        return Response({
+            'booking_request_id': booking_request.id,
+            'property_id': booking_request.property.id,
+            'amount': str(booking_request.property.price),
+            'message': 'Redirecting to payment...',
+        })
