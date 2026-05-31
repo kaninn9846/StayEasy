@@ -164,14 +164,12 @@ export default function PublicNavbar() {
               <>
                 <Link
                   to="/chat"
-                  className="hidden sm:flex p-2 hover:bg-gray-100 rounded-lg transition relative group"
-                  title="Chat"
+                  className="hidden sm:flex items-center justify-center w-9 h-9 hover:bg-gray-100 rounded-lg transition relative group"
+                  title="Messages"
                 >
                   <MessageCircle className="w-5 h-5 text-gray-700 group-hover:text-[#A989C8]" />
                   {unread > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold">
-                      {unread}
-                    </span>
+                    <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full shadow-sm" />
                   )}
                 </Link>
                 <div className="hidden sm:block"><NotificationsDropdown /></div>
@@ -222,7 +220,7 @@ export default function PublicNavbar() {
                           >
                             <item.icon size={17} className="shrink-0" />
                             <span className="flex-1">{item.label}</span>
-                            {item.badge !== null && item.badge !== undefined && item.badge !== false && (
+                            {item.badge != null && (
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                                 typeof item.badge === "number"
                                   ? "bg-red-100 text-red-600"
@@ -312,7 +310,7 @@ export default function PublicNavbar() {
                     >
                       <item.icon size={18} />
                       <span className="flex-1">{item.label}</span>
-                      {item.badge !== null && item.badge !== undefined && item.badge !== false && (
+                      {item.badge != null && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           typeof item.badge === "number"
                             ? "bg-red-100 text-red-600"

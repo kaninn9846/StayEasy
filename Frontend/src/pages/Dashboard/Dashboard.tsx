@@ -46,29 +46,55 @@ function RecentMessages({ userId, userType }: { userId: number; userType?: strin
     socketService.onNewNotification(handleNotification);
     const pollInterval = setInterval(() => loadRecent(), 10000);
     return () => {
-      socketService.removeListener("new-notification");
+      socketService.removeListener("new-notification", handleNotification as any);
       clearInterval(pollInterval);
     };
   }, [userId, loadRecent]);
   if (!userId) return null;
   return (
-    <div className="bg-white rounded-2xl shadow p-4 mb-6">
-      <h3 className="font-bold text-lg mb-2">Recent Messages</h3>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
+      <h3 className="font-bold text-lg mb-3 text-gray-900">Recent Messages</h3>
       {conversations.length === 0 ? (
-        <div className="text-gray-400 text-sm flex items-center gap-2">
+        <div className="text-gray-400 text-sm flex items-center gap-2 py-2">
           <MessageCircle className="w-4 h-4" /> No recent messages
         </div>
       ) : (
-        <ul>
+        <div className="space-y-3">
           {conversations.map((conv) => (
-            <li key={conv.id} className="mb-2">
-              <div className="font-semibold text-sm">{conv.participantName}</div>
-              <div className="text-xs text-gray-500 truncate">{conv.lastMessage}</div>
-            </li>
+            <div
+              key={conv.id}
+              onClick={() => window.location.href = "/chat"}
+              className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 rounded-xl p-2 -mx-2 transition"
+            >
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#A989C8] to-[#8d6aa9] flex items-center justify-center text-white font-bold shrink-0 text-sm">
+                {conv.participantName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-sm text-gray-900 truncate">{conv.participantName}</span>
+                  {conv.lastMessageTime && (
+                    <span className="text-[10px] text-gray-400 shrink-0">{conv.lastMessageTime}</span>
+                  )}
+                </div>
+                {conv.propertyTitle && (
+                  <p className="text-[11px] text-[#A989C8] truncate">{conv.propertyTitle}</p>
+                )}
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`text-xs truncate flex-1 ${conv.unreadCount > 0 ? "font-semibold text-gray-800" : "text-gray-500"}`}>
+                    {conv.lastMessage || "No messages yet"}
+                  </span>
+                  {conv.unreadCount > 0 && (
+                    <span className="bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shrink-0">
+                      {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
-      <div className="mt-2 text-right">
+      <div className="mt-3 text-right">
         <a href="/chat" className="text-[#A989C8] text-sm font-medium hover:underline">View all messages →</a>
       </div>
     </div>
@@ -86,6 +112,7 @@ const Dashboard = () => {
   const [wishlistCount, setWishlistCount] = useState(0);
   const [suspension, setSuspension] = useState<any>(null);
   const [warnings, setWarnings] = useState<any[]>([]);
+  const [chatUnread, setChatUnread] = useState(0);
 
   const userType = user?.user_type || "tenant";
   const isOwner = userType === "owner";
@@ -105,6 +132,12 @@ const Dashboard = () => {
       alert("Failed to delete property. Please try again.");
     }
   };
+
+  useEffect(() => {
+    chatService.getConversations().then((data) => {
+      setChatUnread(data.reduce((sum, c) => sum + (c.unread_count || 0), 0));
+    });
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -465,10 +498,17 @@ const Dashboard = () => {
                       <p className="text-xs text-gray-500">{wishlistCount} saved properties</p>
                     </button>
                     <button onClick={() => navigate('/chat')}
-                      className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow text-left">
-                      <MessageCircle size={20} className="text-[#A989C8] mb-2" />
+                      className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow text-left relative">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MessageCircle size={20} className="text-[#A989C8]" />
+                        {chatUnread > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 shadow-sm">
+                            {chatUnread > 9 ? "9+" : chatUnread}
+                          </span>
+                        )}
+                      </div>
                       <p className="font-bold text-gray-900">Messages</p>
-                      <p className="text-xs text-gray-500">Chat with landlords</p>
+                      <p className="text-xs text-gray-500">{chatUnread > 0 ? `${chatUnread} unread` : "Chat with landlords"}</p>
                     </button>
                     <button onClick={() => navigate('/agreements')}
                       className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow text-left">

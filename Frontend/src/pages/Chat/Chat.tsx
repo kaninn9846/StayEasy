@@ -15,9 +15,11 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <PublicNavbar />
-      <ChatInbox initialConversationId={initialConversationId} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-12">
+        <ChatInbox initialConversationId={initialConversationId} />
+      </div>
     </div>
   );
 }

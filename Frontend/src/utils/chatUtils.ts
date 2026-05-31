@@ -1,10 +1,24 @@
 import type { ConversationData, ConversationView, User } from "../type";
 
+function formatRelativeTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export function toConversationView(c: ConversationData, currentUserId: number, _currentUserType?: string): ConversationView {
   const landlordId = getJwtPayload()?.landlord_id as number | undefined;
 
   const isUserSide = c.user === currentUserId;
-  // Detect landlord side: JWT landlord_id match, OR user is not the regular User FK
   const isLandlordSide = !!(landlordId && c.landlord === landlordId) || (!isUserSide && !!c.landlord);
   const selfLandlordId = isLandlordSide ? c.landlord : landlordId || undefined;
 
@@ -12,36 +26,44 @@ export function toConversationView(c: ConversationData, currentUserId: number, _
   const partnerName = isUserSide ? c.landlord_name : c.user_name;
   const currentUserName = isUserSide ? c.user_name : c.landlord_name;
 
-  // The partner's REGULAR User ID (not LandlordUser ID) for socket notification routing
   const participantUserId = isUserSide
-    ? (c.landlord_user_id ?? c.landlord)   // landlord's regular User ID via email match
-    : c.user;                                // tenant's regular User ID directly
+    ? (c.landlord_user_id ?? c.property?.owner ?? c.landlord)
+    : c.user;
+
+  const lastMsg = c.last_message;
+  const lastMsgText = lastMsg?.content || (lastMsg?.image_url ? "[Image]" : "");
+  const lastMsgTime = lastMsg?.created_at;
+  const lastMsgSender = lastMsg?.sender_name;
 
   return {
     id: String(c.id),
     participantId: partnerId,
     participantName: partnerName || `User ${partnerId}`,
     participantUserId,
-    lastMessage: c.last_message?.content || c.last_message?.image_url || "",
+    lastMessage: lastMsgText,
+    lastMessageTime: lastMsgTime ? formatRelativeTime(lastMsgTime) : undefined,
+    lastMessageSender: lastMsgSender,
     unreadCount: c.unread_count || 0,
     isOnline: false,
     userType: isUserSide ? "user" : "landlord",
     roomId: c.room_id,
     currentUserName,
     myLandlordId: selfLandlordId,
+    propertyTitle: c.property?.title,
+    propertyCity: c.property?.city,
+    propertyImage: undefined,
+    propertyPrice: c.property?.price,
+    propertyId: c.property?.id,
+    subject: c.subject,
+    updatedAt: c.updated_at,
   };
 }
 
 export function canChat(user: User | null | undefined): boolean {
   if (!user) return false;
-
-  // Regular user with tenant or owner (landlord) role
   if (user.user_type === "tenant" || user.user_type === "owner") return true;
-
-  // LandlordUser via separate JWT — decode token to check
   const payload = getJwtPayload();
   if (payload?.landlord_id) return true;
-
   return false;
 }
 

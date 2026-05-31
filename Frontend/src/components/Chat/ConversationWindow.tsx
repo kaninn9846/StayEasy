@@ -1,12 +1,7 @@
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Send,
-  MoreVertical,
-  Trash2,
-  X,
-  Smile,
-  ChevronLeft,
+  Send, MoreVertical, Trash2, X, Smile, ChevronLeft, Home, ExternalLink,
 } from "lucide-react";
 import socketService from "../../services/socketService";
 import chatService from "../../services/chatService";
@@ -30,10 +25,13 @@ function formatDate(dateStr: string): string {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-
   if (d.toDateString() === today.toDateString()) return "Today";
   if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatMsgTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function ConversationWindow({
@@ -89,12 +87,8 @@ export default function ConversationWindow({
 
     const handleMessage = (msg: MessagePayload) => {
       setMessages((prev) => {
-        if (msg.userId === currentUser.id) {
-          return prev;
-        }
-        if (prev.some((m) => m.id === Number(msg.id) || m.id === Number(msg.senderId))) {
-          return prev;
-        }
+        if (msg.userId === currentUser.id) return prev;
+        if (prev.some((m) => m.id === Number(msg.id) || m.id === Number(msg.senderId))) return prev;
         return [
           ...prev,
           {
@@ -106,7 +100,7 @@ export default function ConversationWindow({
             sender_landlord: msg.userType === "landlord" ? (msg.userId ?? null) : null,
             image_url: msg.imageUrl || "",
             caption: msg.caption || "",
-            is_read: true,
+            is_read: false,
             created_at: msg.timestamp || msg.created_at || new Date().toISOString(),
           },
         ];
@@ -115,12 +109,11 @@ export default function ConversationWindow({
     };
 
     const handleTyping = (data: { userId: number; userName: string; isTyping: boolean }) => {
-      if (data.userId !== currentUser.id) {
-        setTyping(data.isTyping);
-      }
+      if (data.userId !== currentUser.id) setTyping(data.isTyping);
     };
 
     socketService.onMessageReceived(handleMessage);
+    socketService.onImageReceived(handleMessage);
     socketService.onHistoryReceived((data) => {
       if (data.messages?.length) {
         setMessages((prev) => {
@@ -129,7 +122,7 @@ export default function ConversationWindow({
             .filter((m: MessagePayload) => !existingIds.has(String(m.id)))
             .map((m: MessagePayload) => ({
               id: Number(m.id) || Date.now(),
-              content: m.message || m.content,
+              content: m.message || m.content || "",
               sender_name: m.userName || m.sender_name || "",
               sender_type: (m.userType || m.sender_type || "user") as "user" | "landlord",
               sender_user: m.userType === "user" ? (m.userId ?? null) : null,
@@ -148,6 +141,7 @@ export default function ConversationWindow({
 
     return () => {
       socketService.removeListener("receive-message", handleMessage);
+      socketService.removeListener("receive-image", handleMessage);
       socketService.removeListener("chat-history");
       socketService.removeListener("user-typing-indicator", handleTyping as any);
       socketService.leaveRoom({ roomId, userId: currentUser.id, userName: displayName });
@@ -179,6 +173,11 @@ export default function ConversationWindow({
     setMessages((prev) => [...prev, optimisticMsg]);
     scrollToBottom();
 
+    const convId = Number(conversation.id);
+    if (convId) {
+      await chatService.saveMessage(convId, text);
+    }
+
     socketService.sendMessage({
       roomId,
       message: text,
@@ -188,18 +187,11 @@ export default function ConversationWindow({
       receiverUserId: conversation.participantUserId,
     });
 
-    const convId = Number(conversation.id);
-    if (convId) {
-      await chatService.saveMessage(convId, text);
-    }
     onMessageSent?.();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   const handleImageSend = async (file: File, caption?: string) => {
@@ -221,56 +213,39 @@ export default function ConversationWindow({
         };
         setMessages((prev) => [...prev, optimisticMsg]);
         scrollToBottom();
-
-        socketService.sendImage({
-          roomId,
-          imageUrl: res.imageUrl,
-          userId: currentUser.id,
-          userName: displayName,
-          userType: effectiveUserType,
-          caption,
-          receiverUserId: conversation.participantUserId,
-        });
         const convId = Number(conversation.id);
         if (convId) {
           await chatService.saveMessage(convId, "", res.imageUrl, caption);
         }
+        socketService.sendImage({
+          roomId, imageUrl: res.imageUrl, userId: currentUser.id,
+          userName: displayName, userType: effectiveUserType, caption,
+          receiverUserId: conversation.participantUserId,
+        });
         onMessageSent?.();
       }
-    } catch {
-      // upload failed silently
+    } catch (e) {
+      console.error("Image upload failed", e);
     }
     setUploading(false);
   };
 
   const handleInputChange = (value: string) => {
     setInput(value);
-    socketService.setTyping({
-      roomId,
-      userId: currentUser.id,
-      userName: displayName,
-      isTyping: true,
-    });
+    socketService.setTyping({ roomId, userId: currentUser.id, userName: displayName, isTyping: true });
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(() => {
-      socketService.setTyping({
-        roomId,
-        userId: currentUser.id,
-        userName: displayName,
-        isTyping: false,
-      });
+      socketService.setTyping({ roomId, userId: currentUser.id, userName: displayName, isTyping: false });
     }, 2000);
   };
 
-  const otherSender = (msg: MessageData): boolean => {
-    if (msg.sender_landlord) return msg.sender_landlord !== myLandlordId;
-    if (msg.sender_user !== undefined && msg.sender_user !== null) return msg.sender_user !== currentUser.id;
-    if (msg.sender_type === "landlord") return !myLandlordId;
-    if (msg.sender_type === "user") return true;
-    return true;
+  const isOwn = (msg: MessageData): boolean => {
+    if (msg.sender_user != null) return msg.sender_user === currentUser.id;
+    if (msg.sender_landlord != null) return msg.sender_landlord === myLandlordId;
+    if (msg.sender_type === "landlord") return !!myLandlordId;
+    if (msg.sender_type === "user") return false;
+    return false;
   };
-
-  const isOwn = (msg: MessageData): boolean => !otherSender(msg);
 
   const groupMessagesByDate = (msgs: MessageData[]) => {
     const groups: { date: string; messages: MessageData[] }[] = [];
@@ -287,45 +262,90 @@ export default function ConversationWindow({
     return groups;
   };
 
+  // Booking inquiry highlight card
+  const showBookingInquiry = conversation.subject?.toLowerCase().includes("payment") ||
+    conversation.subject?.toLowerCase().includes("inquiry") ||
+    false;
+
   const messageList = (
-    <div className="flex-1 overflow-y-auto px-3 py-3 bg-gray-50 space-y-2">
+    <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50 space-y-1">
+      {/* Booking Inquiry Card */}
+      {showBookingInquiry && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <span className="text-lg">📋</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-amber-900">Booking Inquiry</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Payment was unsuccessful. This user would like to discuss booking arrangements.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button className="text-xs font-semibold text-white bg-[#A989C8] px-3 py-1.5 rounded-lg hover:bg-[#8d6aa9] transition">
+                  Reply
+                </button>
+                {conversation.propertyId && (
+                  <button
+                    onClick={() => navigate(`/property/${conversation.propertyId}`)}
+                    className="text-xs font-semibold text-[#A989C8] border border-[#A989C8] px-3 py-1.5 rounded-lg hover:bg-[#A989C8]/5 transition flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    View Property
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {groupMessagesByDate(messages).map((group) => (
         <div key={group.date}>
-          <div className="flex justify-center my-2">
+          <div className="flex justify-center my-3">
             <span className="text-[10px] text-gray-400 bg-white px-3 py-1 rounded-full shadow-sm border">
               {formatDate(group.date)}
             </span>
           </div>
-          {group.messages.map((msg) => {
+          {group.messages.map((msg, idx) => {
             const mine = isOwn(msg);
+            const showReadReceipt = mine && msg.is_read && msg.id > 0;
+            const showSenderName = !mine && (idx === 0 || isOwn(group.messages[idx - 1]));
             return (
-              <div key={msg.id} className={`message-enter flex flex-col ${mine ? "items-end" : "items-start"}`}>
-                {!mine && msg.sender_name && (
+              <div key={msg.id} className={`message-enter flex flex-col ${mine ? "items-end" : "items-start"} mb-1`}>
+                {showSenderName && msg.sender_name && (
                   <span className="text-[11px] text-gray-500 px-1 mb-0.5">{msg.sender_name}</span>
                 )}
-                <div
-                  className={`px-3 py-2 rounded-lg max-w-xs sm:max-w-sm break-words ${
-                    mine
-                      ? "bg-[#A989C8] text-white rounded-br-sm"
-                      : "bg-white border text-gray-800 rounded-bl-sm"
-                  }`}
-                >
-                  {msg.image_url ? (
-                    <>
-                      <img
-                        src={msg.image_url}
-                        alt="chat-img"
-                        className="max-h-48 rounded mb-1 cursor-pointer hover:opacity-90 transition"
-                        onClick={() => setPreviewImage(msg.image_url!)}
-                      />
-                      {msg.caption && <p className="text-xs mt-1 opacity-90">{msg.caption}</p>}
-                    </>
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  )}
-                  <p className={`text-[10px] mt-1 ${mine ? "text-white/70" : "text-gray-400"}`}>
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
+                <div className={`flex items-end gap-2 max-w-[75%] ${mine ? "flex-row-reverse" : ""}`}>
+                  <div
+                    className={`px-3.5 py-2.5 rounded-2xl break-words ${
+                      mine
+                        ? "bg-[#A989C8] text-white rounded-br-md"
+                        : "bg-white border border-gray-100 text-gray-800 rounded-bl-md shadow-sm"
+                    }`}
+                  >
+                    {msg.image_url ? (
+                      <>
+                        <img
+                          src={msg.image_url}
+                          alt="chat-img"
+                          className="max-h-48 rounded-lg mb-1 cursor-pointer hover:opacity-90 transition"
+                          onClick={() => setPreviewImage(msg.image_url!)}
+                        />
+                        {msg.caption && <p className="text-xs mt-1 opacity-90">{msg.caption}</p>}
+                      </>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    )}
+                    <div className={`flex items-center gap-1.5 mt-1 ${mine ? "justify-end" : ""}`}>
+                      <span className={`text-[10px] ${mine ? "text-white/60" : "text-gray-400"}`}>
+                        {formatMsgTime(msg.created_at)}
+                      </span>
+                      {showReadReceipt && (
+                        <span className="text-[10px] text-blue-300">read</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -333,11 +353,11 @@ export default function ConversationWindow({
         </div>
       ))}
       {typing && (
-        <div className="flex items-start pl-1">
-          <div className="px-4 py-3 rounded-lg bg-white border flex items-center gap-1">
-            <span className="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full inline-block" />
-            <span className="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full inline-block" />
-            <span className="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full inline-block" />
+        <div className="flex items-start pl-1 mt-2">
+          <div className="px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center gap-1">
+            <span className="typing-dot w-2 h-2 bg-gray-400 rounded-full inline-block" />
+            <span className="typing-dot w-2 h-2 bg-gray-400 rounded-full inline-block" />
+            <span className="typing-dot w-2 h-2 bg-gray-400 rounded-full inline-block" />
           </div>
         </div>
       )}
@@ -346,11 +366,9 @@ export default function ConversationWindow({
   );
 
   const inputBar = (
-    <div className="px-3 py-2 border-t bg-white flex items-center gap-2 shrink-0">
+    <div className="px-4 py-3 border-t border-gray-100 bg-white flex items-center gap-2 shrink-0">
       <ImageUploader
-        roomId={roomId}
-        userId={currentUser.id}
-        userName={displayName}
+        roomId={roomId} userId={currentUser.id} userName={displayName}
         userType={effectiveUserType}
         onUploadStart={() => setUploading(true)}
         onUploadComplete={(file) => { setUploading(false); if (file) handleImageSend(file); }}
@@ -358,7 +376,7 @@ export default function ConversationWindow({
       <div className="relative">
         <button
           type="button"
-          className="p-1.5 text-gray-500 hover:text-[#A989C8]"
+          className="p-1.5 text-gray-500 hover:text-[#A989C8] transition"
           onClick={() => setShowEmoji((v) => !v)}
           disabled={uploading}
         >
@@ -378,13 +396,13 @@ export default function ConversationWindow({
         onChange={(e) => handleInputChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Type a message..."
-        className="flex-1 border rounded-full px-4 py-2 text-sm outline-none focus:border-[#A989C8]"
+        className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-[#A989C8] focus:ring-1 focus:ring-[#A989C8]/20 transition"
         disabled={uploading}
       />
       <button
         onClick={handleSend}
         disabled={!input.trim() || uploading}
-        className="bg-[#A989C8] text-white p-2 rounded-full disabled:opacity-50 hover:bg-[#9678b5]"
+        className="bg-[#A989C8] text-white p-2.5 rounded-full disabled:opacity-50 hover:bg-[#8d6aa9] transition shadow-sm"
       >
         <Send className="w-4 h-4" />
       </button>
@@ -393,14 +411,14 @@ export default function ConversationWindow({
 
   const menuDropdown = (
     <div className="relative">
-      <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 hover:bg-white/20 rounded">
+      <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 hover:bg-white/20 rounded-lg transition">
         <MoreVertical className="w-4 h-4" />
       </button>
       {showMenu && (
-        <div className="absolute right-0 top-8 bg-white text-black rounded shadow z-10">
+        <div className="absolute right-0 top-8 bg-white text-black rounded-xl shadow-xl border border-gray-100 z-10 py-1 min-w-[140px]">
           <button
             onClick={() => onDelete(conversation.id)}
-            className="flex items-center gap-2 px-3 py-2 text-red-500 text-sm whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition w-full"
           >
             <Trash2 className="w-4 h-4" />
             Delete
@@ -412,19 +430,28 @@ export default function ConversationWindow({
 
   const chatContent = (
     <>
-      <div className="px-4 py-3 bg-[#A989C8] text-white flex items-center justify-between shrink-0">
+      {/* Header with property info */}
+      <div className="px-5 py-4 bg-white border-b border-gray-100 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={onClose} className="md:hidden p-1.5 hover:bg-white/20 rounded">
-            <ChevronLeft className="w-5 h-5" />
+          <button onClick={onClose} className="md:hidden p-1.5 hover:bg-gray-100 rounded-lg transition">
+            <ChevronLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm shrink-0">
-            {conversation.participantName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <h2 className="font-semibold text-sm truncate">{conversation.participantName}</h2>
-            <p className="text-xs opacity-80">
-              {typing ? "typing..." : conversation.isOnline ? "Online" : "Offline"}
-            </p>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#A989C8] to-[#8d6aa9] flex items-center justify-center text-white shrink-0 shadow-sm relative">
+              <Home className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-semibold text-sm text-gray-900 truncate">{conversation.participantName}</h2>
+              {conversation.propertyTitle && (
+                <p className="text-[12px] text-[#A989C8] font-medium truncate">{conversation.propertyTitle}</p>
+              )}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={`w-2 h-2 rounded-full ${typing ? "bg-green-400 animate-pulse" : conversation.isOnline ? "bg-green-500" : "bg-gray-300"}`} />
+                <span className="text-[11px] text-gray-400">
+                  {typing ? "typing..." : conversation.isOnline ? "Online" : "Offline"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
         {menuDropdown}
@@ -443,13 +470,12 @@ export default function ConversationWindow({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 md:bg-black/10"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
-          <div className="w-full h-full md:w-[480px] md:h-[600px] md:rounded-xl md:shadow-2xl bg-white flex flex-col overflow-hidden">
+          <div className="w-full h-full md:w-[480px] md:h-[600px] md:rounded-2xl md:shadow-2xl bg-white flex flex-col overflow-hidden">
             {chatContent}
           </div>
         </div>
       )}
 
-      {/* Image preview lightbox */}
       {previewImage && (
         <div
           className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
@@ -457,7 +483,7 @@ export default function ConversationWindow({
         >
           <button
             onClick={() => setPreviewImage(null)}
-            className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full"
+            className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition"
           >
             <X className="w-6 h-6" />
           </button>

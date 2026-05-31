@@ -87,10 +87,19 @@ export interface ConversationView {
   participantName: string;
   participantUserId: number;
   lastMessage: string;
+  lastMessageTime?: string;
+  lastMessageSender?: string;
   unreadCount: number;
   isOnline: boolean;
   userType: "user" | "landlord";
   roomId?: string | null;
   currentUserName?: string;
   myLandlordId?: number;
+  propertyTitle?: string;
+  propertyCity?: string;
+  propertyImage?: string;
+  propertyPrice?: string;
+  propertyId?: number;
+  subject?: string;
+  updatedAt?: string;
 }
