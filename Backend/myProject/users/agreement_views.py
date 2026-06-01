@@ -221,6 +221,12 @@ class LandlordSignAgreementView(views.APIView):
         agreement.status = 'active'
         agreement.save()
 
+        # Mark the booking as confirmed now that agreement is fully signed
+        booking = agreement.booking
+        if booking and booking.status != 'confirmed':
+            booking.status = 'confirmed'
+            booking.save()
+
         # Notify tenant
         Notification.objects.create(
             recipient=agreement.tenant,

@@ -2,6 +2,8 @@ import React, { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Lock, Home, Check, Eye, EyeOff } from "lucide-react";
 import { resetPasswordApi } from "../../services/api";
+import PasswordStrengthBar from "../../components/Auth/PasswordStrengthBar";
+import { validatePassword, isPasswordValid } from "../../utils/passwordValidation";
 import "./Auth.css";
 
 const ResetPassword: React.FC = () => {
@@ -13,14 +15,18 @@ const ResetPassword: React.FC = () => {
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
+  const passwordRules = validatePassword(password);
+  const passwordValid = isPasswordValid(passwordRules);
+  const passwordMismatch = password2.length > 0 && password !== password2;
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (password !== password2) {
       setError("Passwords do not match.");
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (!passwordValid) {
+      setError("Password does not meet all requirements.");
       return;
     }
     setError("");
@@ -107,12 +113,12 @@ const ResetPassword: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={8}
                   />
                   <button type="button" className="eye-btn" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff size={18} className="input-icon" /> : <Eye size={18} className="input-icon" />}
                   </button>
                 </div>
+                <PasswordStrengthBar password={password} />
               </div>
               <div className="form-group">
                 <label className="input-label">Confirm Password <span className="asterisk">*</span></label>
@@ -124,12 +130,16 @@ const ResetPassword: React.FC = () => {
                     value={password2}
                     onChange={(e) => setPassword2(e.target.value)}
                     required
-                    minLength={8}
                   />
                 </div>
+                {passwordMismatch && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Passwords do not match
+                  </p>
+                )}
               </div>
               {error && <p className="auth-error">{error}</p>}
-              <button className="submit-btn" disabled={loading}>
+              <button className="submit-btn" disabled={loading || !passwordValid}>
                 {loading ? "Resetting..." : "Reset Password"}
               </button>
             </form>

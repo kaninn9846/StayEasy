@@ -12,7 +12,7 @@ export default function Details({ onNext, onBack }: any) {
 
   const [formData, setFormData] = useState({
     moveInDate: "",
-    leaseDuration: "12",
+    moveOutDate: "",
     fullName: "",
     email: "",
     phone: "",
@@ -38,9 +38,13 @@ export default function Details({ onNext, onBack }: any) {
   const validate = () => {
     const err: any = {};
     if (!formData.moveInDate) err.moveInDate = "Required";
+    if (!formData.moveOutDate) err.moveOutDate = "Required";
     if (!formData.fullName) err.fullName = "Required";
     if (!formData.email) err.email = "Required";
     if (!formData.phone) err.phone = "Required";
+    if (formData.moveInDate && formData.moveOutDate && new Date(formData.moveOutDate) <= new Date(formData.moveInDate)) {
+      err.moveOutDate = "Move out must be after move in";
+    }
     setErrors(err);
     return Object.keys(err).length === 0;
   };
@@ -49,16 +53,18 @@ export default function Details({ onNext, onBack }: any) {
     if (!validate()) return;
 
     const checkInDate = new Date(formData.moveInDate);
-    const leaseDays = parseInt(formData.leaseDuration) * 30;
-    const checkOutDate = new Date(checkInDate);
-    checkOutDate.setDate(checkOutDate.getDate() + leaseDays);
+    const checkOutDate = new Date(formData.moveOutDate);
+
+    const diffMs = checkOutDate.getTime() - checkInDate.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const months = Math.max(1, Math.ceil(diffDays / 30));
 
     const monthlyPrice = Number(property?.price || 0);
 
     onNext({
       check_in: checkInDate.toISOString().split("T")[0],
       check_out: checkOutDate.toISOString().split("T")[0],
-      total_price: monthlyPrice * parseInt(formData.leaseDuration),
+      total_price: monthlyPrice * months,
       ...formData,
     });
   };
@@ -78,8 +84,14 @@ export default function Details({ onNext, onBack }: any) {
     );
 
   const monthlyPrice = Number(property.price || 0);
-  const leaseMonths = parseInt(formData.leaseDuration);
-  const totalPrice = monthlyPrice * leaseMonths;
+  let totalPrice = 0;
+  if (formData.moveInDate && formData.moveOutDate) {
+    const inD = new Date(formData.moveInDate);
+    const outD = new Date(formData.moveOutDate);
+    const diffDays = Math.ceil((outD.getTime() - inD.getTime()) / (1000 * 60 * 60 * 24));
+    const months = Math.max(1, Math.ceil(diffDays / 30));
+    totalPrice = monthlyPrice * months;
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
@@ -101,6 +113,7 @@ export default function Details({ onNext, onBack }: any) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Move In Date</label>
                 <input
                   type="date"
                   className={`w-full border-2 p-3 rounded-xl ${
@@ -116,17 +129,22 @@ export default function Details({ onNext, onBack }: any) {
                 )}
               </div>
 
-              <select
-                className="w-full border p-3 rounded-xl"
-                value={formData.leaseDuration}
-                onChange={(e) =>
-                  setFormData({ ...formData, leaseDuration: e.target.value })
-                }
-              >
-                <option value="6">6 months</option>
-                <option value="12">12 months</option>
-                <option value="24">24 months</option>
-              </select>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Move Out Date</label>
+                <input
+                  type="date"
+                  className={`w-full border-2 p-3 rounded-xl ${
+                    errors.moveOutDate ? "border-red-500" : "border-gray-200"
+                  }`}
+                  value={formData.moveOutDate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, moveOutDate: e.target.value })
+                  }
+                />
+                {errors.moveOutDate && (
+                  <p className="text-red-500 text-sm">{errors.moveOutDate}</p>
+                )}
+              </div>
             </div>
 
             <div className="mt-4 space-y-3">

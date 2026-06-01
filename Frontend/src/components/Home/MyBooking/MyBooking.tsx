@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, CheckCircle2, MapPin } from "lucide-react";
+import { Eye, CheckCircle2, MapPin, FileSignature } from "lucide-react";
 import PublicNavbar from "../../Navbar/PublicNavbar"; 
 import Footer from "../../Footer";
 import { getUserBookings } from "../../../services/api";
@@ -20,7 +20,7 @@ export default function MyBooking() {
       setBookings(data || []);
       setLoading(false);
     } catch (error) {
-      console.error("Fetch bookings error:", error);
+      console.error("Fetch error:", error);
       setLoading(false);
     }
   };
@@ -30,9 +30,9 @@ export default function MyBooking() {
       case 'confirmed':
         return 'Booked';
       case 'pending':
-        return 'Processing';
+        return 'Pending';
       case 'processing':
-        return 'Processing';
+        return 'Pending';
       default:
         return status;
     }
@@ -140,17 +140,38 @@ export default function MyBooking() {
 
                   {/* Footer of the booking card */}
                   <div className="flex justify-between items-center pt-4 border-t border-slate-50">
-                    <div className="text-[9px] font-bold uppercase tracking-widest">
-                      <p className="text-slate-400">Status: <span className={getStatusColor(booking.status).split(' ')[1]}>{getStatusLabel(booking.status).toUpperCase()}</span></p>
+                    <div className="flex items-center gap-2">
+                      {booking.agreement_info && booking.agreement_info.status === 'pending_tenant' && (
+                        <button
+                          onClick={() => navigate(`/agreements/${booking.agreement_info.id}`)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-amber-200 transition-all"
+                        >
+                          <FileSignature size={12} />
+                          Complete Agreement
+                        </button>
+                      )}
+                      {booking.agreement_info && booking.agreement_info.status !== 'pending_tenant' && (
+                        <button
+                          onClick={() => navigate(`/agreements/${booking.agreement_info.id}`)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-200 transition-all"
+                        >
+                          <FileSignature size={12} />
+                          View Agreement
+                        </button>
+                      )}
                     </div>
-                    
-                    <button 
-                      onClick={() => navigate(`/property/${booking.property_info.id}`)}
-                      className="flex items-center gap-1.5 text-[#A989C8] font-bold text-[10px] uppercase tracking-widest hover:opacity-70 transition-all"
-                    >
-                      <Eye size={14} />
-                      View Details
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <div className="text-[9px] font-bold uppercase tracking-widest">
+                        <p className="text-slate-400">Status: <span className={getStatusColor(booking.status).split(' ')[1]}>{getStatusLabel(booking.status).toUpperCase()}</span></p>
+                      </div>
+                      <button 
+                        onClick={() => navigate(`/property/${booking.property_info.id}`)}
+                        className="flex items-center gap-1.5 text-[#A989C8] font-bold text-[10px] uppercase tracking-widest hover:opacity-70 transition-all"
+                      >
+                        <Eye size={14} />
+                        View Details
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

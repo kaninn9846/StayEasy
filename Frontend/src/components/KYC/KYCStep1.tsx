@@ -33,9 +33,13 @@ export default function KYCStep1({ formData, onUpdate }: KYCStep1Props) {
         </label>
         <input
           type="tel"
-          placeholder="Enter your phone number"
+          placeholder="Enter your 10-digit phone number"
+          maxLength={10}
           value={formData.phone_number}
-          onChange={(e) => onUpdate({ phone_number: e.target.value })}
+          onChange={(e) => {
+            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+            onUpdate({ phone_number: val });
+          }}
           className="w-full px-4 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#A87DC2]/20 focus:border-[#A87DC2] transition-all"
         />
       </div>

@@ -538,6 +538,18 @@ class KYCSubmitView(generics.CreateAPIView):
     serializer_class = KYCSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"KYC submit by user {request.user.id}, files: {list(request.FILES.keys())}, data: {request.data.keys() if hasattr(request.data, 'keys') else 'N/A'}")
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"KYC submit failed for user {request.user.id}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
+
     def perform_create(self, serializer):
         if KYC.objects.filter(user=self.request.user).exists():
             raise ValidationError({"error": "KYC already submitted"})
@@ -1256,12 +1268,11 @@ class VerifyEsewaPaymentView(views.APIView):
             # Get and update booking
             booking = Booking.objects.get(id=booking_id, user=request.user)
             
-            # Update booking with payment details — immediately confirmed
+            # Update booking with payment details — stays pending until agreement is signed
             booking.esewa_transaction_id = response_data.get('oid')
             booking.esewa_ref_id = response_data.get('refId')
             booking.payment_status = 'completed'
             booking.payment_method = 'esewa'
-            booking.status = 'confirmed'
             booking.save()
 
             # Create or update Payment record

@@ -18,7 +18,7 @@ export default function Booking() {
   const [bookingData, setBookingData] = useState<any>({
     propertyId: propertyId,
     moveInDate: "",
-    leaseDuration: "12",
+    moveOutDate: "",
     fullName: "",
     email: "",
     phone: "",

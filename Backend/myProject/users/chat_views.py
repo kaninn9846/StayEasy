@@ -244,9 +244,9 @@ class ConversationMessageView(generics.ListCreateAPIView):
             raise drf_serializers.ValidationError("Access denied")
 
         if landlord_id and chat.landlord_id == landlord_id:
-            serializer.save(chat=chat, sender_landlord_id=landlord_id, is_read=True)
+            serializer.save(chat=chat, sender_landlord_id=landlord_id)
         else:
-            serializer.save(chat=chat, sender_user=user, is_read=True)
+            serializer.save(chat=chat, sender_user=user)
 
         chat.save(update_fields=['updated_at'])
 

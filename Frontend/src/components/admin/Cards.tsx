@@ -1,8 +1,6 @@
 import React, { type ReactNode } from 'react';
 import { TrendingUp, ChevronRight } from 'lucide-react';
 
-// --- 1. STAT CARD (Top Row) ---
-// Handles the "Urgent" orange style and the standard white style
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -16,14 +14,14 @@ export const StatCard: React.FC<StatCardProps> = ({
   title, value, icon, trend, isUrgent, linkText 
 }) => {
   return (
-    <div className={`rounded-2xl p-6 border transition-all duration-300 hover:shadow-md relative overflow-hidden ${
+    <div className={`rounded-[2rem] p-6 border transition-all duration-300 hover:shadow-md relative overflow-hidden ${
       isUrgent 
-        ? 'bg-[#F3A939] border-transparent shadow-lg shadow-orange-100' 
+        ? 'bg-gradient-to-br from-[#F3A939] to-[#E8961E] border-transparent shadow-lg shadow-orange-100' 
         : 'bg-white border-gray-100 shadow-sm'
     }`}>
       <div className="flex justify-between items-start mb-6">
         <div className={`p-2.5 rounded-xl flex items-center justify-center ${
-          isUrgent ? 'bg-white/20 text-white' : 'bg-purple-50 text-[#A989C8]'
+          isUrgent ? 'bg-white/20 text-white' : 'bg-[#F3EDF9] text-[#A989C8]'
         }`}>
           {icon}
         </div>
@@ -57,8 +55,6 @@ export const StatCard: React.FC<StatCardProps> = ({
   );
 };
 
-// --- 2. LIST CARD (Middle Row Statistics) ---
-// Used for KYC Statistics, User Distribution, and Quick Stats
 interface ListCardItem {
   label: string;
   value: string | number;
@@ -72,7 +68,7 @@ interface ListCardProps {
 }
 
 export const ListCard: React.FC<ListCardProps> = ({ title, icon, items }) => (
-  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+  <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
     <div className="flex items-center gap-2 mb-6">
       <div className="text-[#A989C8]">{icon}</div>
       <span className="text-gray-800 font-bold text-base">{title}</span>
@@ -90,8 +86,6 @@ export const ListCard: React.FC<ListCardProps> = ({ title, icon, items }) => (
   </div>
 );
 
-// --- 3. ACTION CARD (Quick Actions Row) ---
-// The component that was previously missing/throwing an error
 interface ActionCardProps {
   title: string;
   subtext: string;
@@ -100,7 +94,7 @@ interface ActionCardProps {
 }
 
 export const ActionCard: React.FC<ActionCardProps> = ({ title, subtext, icon, iconBg }) => (
-  <button className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:border-[#A989C8] hover:bg-purple-50/30 transition-all text-left group w-full">
+  <button className="bg-white p-4 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-4 hover:border-[#A989C8] hover:bg-[#F3EDF9]/30 transition-all text-left group w-full">
     <div className={`${iconBg} p-3 rounded-xl group-hover:scale-110 transition-transform flex items-center justify-center shadow-sm`}>
       {icon}
     </div>
@@ -111,11 +105,10 @@ export const ActionCard: React.FC<ActionCardProps> = ({ title, subtext, icon, ic
   </button>
 );
 
-// --- 4. METRIC CARD (Optional / Simplified Version) ---
 export const MetricCard: React.FC<{ title: string; value: string; icon: ReactNode; color: string; bg: string }> = ({ 
   title, value, icon, color, bg 
 }) => (
-  <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+  <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm flex items-center gap-4">
     <div className={`${bg} ${color} p-3 rounded-xl`}>
       {icon}
     </div>

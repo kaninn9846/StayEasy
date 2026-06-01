@@ -96,7 +96,7 @@ const Step5Images: React.FC<Props> = ({ formData, setFormData, existingImages, s
         <div className="mt-2 h-2 bg-gray-300 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all ${
-              isMinMet ? 'bg-green-500' : 'bg-orange-500'
+              isMinMet ? 'bg-[#A989C8]' : 'bg-[#A989C8]/50'
             }`}
             style={{ width: `${(totalImages / MAX_IMAGES) * 100}%` }}
           />
@@ -209,7 +209,7 @@ const Step5Images: React.FC<Props> = ({ formData, setFormData, existingImages, s
       {!isMinMet && totalImages > 0 && (
         <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
           <p className="text-sm text-orange-800">
-            ⚠️ You need at least <strong>{MIN_IMAGES} images</strong>. Currently: <strong>{totalImages}</strong>
+             You need at least <strong>{MIN_IMAGES} images</strong>. Currently: <strong>{totalImages}</strong>
           </p>
         </div>
       )}

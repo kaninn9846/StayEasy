@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Package, Loader2, Eye, X, AlertCircle } from "lucide-react";
+import { Package, Loader2, Eye, X, AlertCircle, FileSignature } from "lucide-react";
 
 interface Booking {
   id: number;
@@ -17,6 +17,7 @@ interface Booking {
   check_out: string;
   total_price: number;
   status: "confirmed" | "pending" | "processing" | "completed" | "cancelled";
+  agreement_info: { id: number; status: string } | null;
   created_at: string;
 }
 
@@ -35,12 +36,12 @@ const MyBookings = () => {
     setError("");
     try {
       const token = localStorage.getItem("access");
-      const response = await axios.get(`${API_BASE}/bookings/`, {
+      const bookingRes = await axios.get(`${API_BASE}/bookings/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       // Filter for unique bookings (in case of duplicates)
       const uniqueBookings = Array.from(
-        new Map((response.data.results || []).map((b: Booking) => [b.id, b])).values()
+        new Map((bookingRes.data.results || []).map((b: Booking) => [b.id, b])).values()
       ) as Booking[];
       setBookings(uniqueBookings);
     } catch (err: any) {
@@ -149,7 +150,9 @@ const MyBookings = () => {
           <div className="mb-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Active Bookings</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeBookings.map((booking) => (
+              {activeBookings.map((booking) => {
+                const agreement = booking.agreement_info;
+                return (
                 <div
                   key={booking.id}
                   className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow"
@@ -220,13 +223,27 @@ const MyBookings = () => {
 
                     {/* Action Buttons */}
                     <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => navigate(`/property/${booking.property_info.id}`)}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition font-medium text-sm"
-                      >
-                        <Eye size={16} />
-                        View
-                      </button>
+                      {agreement ? (
+                        <button
+                          onClick={() => navigate(`/agreements/${agreement.id}`)}
+                          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition font-medium text-sm ${
+                            agreement.status === 'pending_tenant'
+                              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                              : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                          }`}
+                        >
+                          <FileSignature size={16} />
+                          {agreement.status === 'pending_tenant' ? 'Complete Agreement' : 'View Agreement'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => navigate(`/property/${booking.property_info.id}`)}
+                          className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition font-medium text-sm"
+                        >
+                          <Eye size={16} />
+                          View
+                        </button>
+                      )}
                       <button
                         onClick={() => handleCancelBooking(booking.id)}
                         disabled={cancelLoading === booking.id}
@@ -242,7 +259,8 @@ const MyBookings = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           </div>
         )}

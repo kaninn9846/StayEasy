@@ -30,7 +30,7 @@ interface Booking {
 }
 
 const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: "Pending", color: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
+  pending: { label: "Pending", color: "text-[#A989C8]", bg: "bg-[#F3EDF9] border-[#E8DCF2]" },
   processing: { label: "Processing", color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
   confirmed: { label: "Confirmed", color: "text-green-700", bg: "bg-green-50 border-green-200" },
   completed: { label: "Completed", color: "text-gray-700", bg: "bg-gray-50 border-gray-200" },
@@ -90,8 +90,8 @@ const BookingManagement = () => {
   });
 
   const stats = [
-    { label: "Total", value: bookings.length, icon: Package, color: "text-purple-500", bg: "bg-purple-50" },
-    { label: "Processing", value: bookings.filter(b => b.status === "pending" || b.status === "processing").length, icon: Clock, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "Total", value: bookings.length, icon: Package, color: "text-[#A989C8]", bg: "bg-[#F3EDF9]" },
+    { label: "Active", value: bookings.filter(b => b.status === "pending" || b.status === "processing").length, icon: Clock, color: "text-blue-500", bg: "bg-blue-50" },
     { label: "Confirmed", value: bookings.filter(b => b.status === "confirmed").length, icon: CheckCircle2, color: "text-green-500", bg: "bg-green-50" },
     { label: "Completed", value: bookings.filter(b => b.status === "completed").length, icon: Package, color: "text-gray-500", bg: "bg-gray-50" },
     { label: "Cancelled", value: bookings.filter(b => b.status === "cancelled").length, icon: XCircle, color: "text-red-500", bg: "bg-red-50" },
@@ -107,7 +107,9 @@ const BookingManagement = () => {
         <div className="flex justify-between items-end mb-10">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Package className="text-[#A989C8]" size={24} />
+              <div className="p-2 bg-gradient-to-br from-[#A989C8] to-[#A87DC2] rounded-xl shadow-sm">
+                <Package className="text-white" size={20} />
+              </div>
               <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Booking Management</h1>
             </div>
             <p className="text-gray-500 font-medium">View and manage all bookings</p>
@@ -149,7 +151,7 @@ const BookingManagement = () => {
                 onClick={() => setFilterStatus(s)}
                 className={`px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${
                   filterStatus === s
-                    ? 'bg-gradient-to-r from-[#A989C8] to-purple-700 text-white shadow-md'
+                    ? 'bg-gradient-to-r from-[#A989C8] to-[#A87DC2] text-white shadow-md'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -225,7 +227,7 @@ const BookingManagement = () => {
                       {/* Tenant */}
                       <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
                         <span className="inline-flex items-center gap-1.5">
-                          <Users size={14} className="text-purple-400" />
+                          <Users size={14} className="text-[#A989C8]" />
                           {booking.user_info.first_name} {booking.user_info.last_name}
                         </span>
                         <span className="text-gray-300">|</span>
@@ -235,12 +237,12 @@ const BookingManagement = () => {
                       {/* Dates & Price */}
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3 text-sm">
                         <span className="inline-flex items-center gap-1.5 text-gray-500">
-                          <Calendar size={14} className="text-blue-400" />
-                          {new Date(booking.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(booking.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          <Calendar size={14} className="text-[#A989C8]" />
+                          {new Date(booking.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} &ndash; {new Date(booking.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                         <span className="font-black text-gray-900">NPR {booking.total_price.toLocaleString()}</span>
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
-                          {booking.payment_status} · {booking.payment_type}
+                          {booking.payment_status} &middot; {booking.payment_type}
                         </span>
                       </div>
                     </div>
@@ -277,7 +279,7 @@ const BookingManagement = () => {
                       ) : (
                         <button
                           onClick={() => { setEditingId(booking.id); setNewStatus(booking.status); }}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#A989C8] text-white rounded-xl text-xs font-bold hover:bg-[#9678b5] transition-colors"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#A989C8] to-[#A87DC2] text-white rounded-xl text-xs font-bold hover:from-[#A87DC2] hover:to-[#9668B8] transition-colors shadow-sm"
                         >
                           Change Status <ArrowRight size={14} />
                         </button>
@@ -305,7 +307,7 @@ const BookingManagement = () => {
             {(search || filterStatus !== "all") && (
               <button
                 onClick={() => { setSearch(''); setFilterStatus('all'); }}
-                className="mt-3 text-sm text-[#A989C8] font-black hover:text-purple-800 transition-colors uppercase tracking-wider"
+                className="mt-3 text-sm text-[#A989C8] font-black hover:text-[#A87DC2] transition-colors uppercase tracking-wider"
               >
                 Clear filters
               </button>

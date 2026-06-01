@@ -451,7 +451,7 @@ class PropertySerializer(serializers.ModelSerializer):
             booking = Booking.objects.filter(
                 property=obj,
                 user=request.user,
-                status__in=['pending', 'processing', 'confirmed']
+                status__in=['processing', 'confirmed']
             ).first()
             if booking:
                 return booking.id
@@ -465,7 +465,7 @@ class PropertySerializer(serializers.ModelSerializer):
             booking = Booking.objects.filter(
                 property=obj,
                 user=request.user,
-                status__in=['pending', 'processing', 'confirmed']
+                status__in=['processing', 'confirmed']
             ).first()
             if booking:
                 return booking.status
@@ -480,7 +480,7 @@ class PropertySerializer(serializers.ModelSerializer):
             booking = Booking.objects.filter(
                 property=self.instance,
                 user=request.user,
-                status__in=['pending', 'processing', 'confirmed']
+                status__in=['processing', 'confirmed']
             ).first()
             return booking
         return None
@@ -493,7 +493,7 @@ class PropertySerializer(serializers.ModelSerializer):
             booking = Booking.objects.filter(
                 property=obj,
                 user=request.user,
-                status__in=['pending', 'processing', 'confirmed']
+                status__in=['processing', 'confirmed']
             ).first()
             if booking:
                 return booking.check_in
@@ -507,7 +507,7 @@ class PropertySerializer(serializers.ModelSerializer):
             booking = Booking.objects.filter(
                 property=obj,
                 user=request.user,
-                status__in=['pending', 'processing', 'confirmed']
+                status__in=['processing', 'confirmed']
             ).first()
             if booking:
                 return booking.check_out
@@ -521,7 +521,7 @@ class PropertySerializer(serializers.ModelSerializer):
             booking = Booking.objects.filter(
                 property=obj,
                 user=request.user,
-                status__in=['pending', 'processing', 'confirmed']
+                status__in=['processing', 'confirmed']
             ).first()
             if booking:
                 return booking.total_price
@@ -554,6 +554,7 @@ class BookingDetailSerializer(serializers.ModelSerializer):
     """Detailed booking serializer with property and user info"""
     property_info = serializers.SerializerMethodField()
     user_info = serializers.SerializerMethodField()
+    agreement_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -570,6 +571,7 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             "payment_type",
             "esewa_ref_id",
             "esewa_transaction_id",
+            "agreement_info",
             "created_at",
             "updated_at"
         ]
@@ -610,6 +612,16 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             "phone": phone,
             "kyc_status": kyc_status,
         }
+
+    def get_agreement_info(self, obj):
+        """Return the related rental agreement info if one exists"""
+        agreement = obj.rental_agreements.first()
+        if agreement:
+            return {
+                "id": agreement.id,
+                "status": agreement.status,
+            }
+        return None
 
 
 class BookingCreateSerializer(serializers.ModelSerializer):
@@ -980,6 +992,7 @@ class RentalAgreementListSerializer(serializers.ModelSerializer):
             'id', 'status', 'monthly_rent', 'security_deposit',
             'tenant_name', 'landlord_name', 'property_name',
             'tenant_signed_at', 'landlord_signed_at',
+            'booking',
             'created_at', 'updated_at',
         ]
 

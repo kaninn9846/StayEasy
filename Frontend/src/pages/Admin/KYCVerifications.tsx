@@ -52,20 +52,21 @@ const KYCVerifications: React.FC = () => {
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        {/* --- HEADER SECTION (Matches Admin Dashboard) --- */}
+        {/* --- HEADER SECTION --- */}
         <div className="flex justify-between items-end mb-10">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Shield className="text-[#A989C8]" size={24} />
+              <div className="p-2 bg-gradient-to-br from-[#A989C8] to-[#A87DC2] rounded-xl shadow-sm">
+                <Shield className="text-white" size={20} />
+              </div>
               <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">KYC Verifications</h1>
             </div>
             <p className="text-gray-500 font-medium">Review and manage user verification requests</p>
           </div>
         </div>
 
-        {/* --- STATS ROW (Matches Dashboard Top Cards) --- */}
+        {/* --- STATS ROW --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Main Pending Card */}
           <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm relative overflow-hidden">
              <div className="flex justify-between items-start mb-4">
                 <div className="p-2 bg-orange-50 rounded-lg text-orange-500">
@@ -80,10 +81,9 @@ const KYCVerifications: React.FC = () => {
              <div className="mt-4 text-[10px] font-black text-orange-500 uppercase tracking-wider bg-orange-50 w-fit px-2 py-0.5 rounded">Urgent</div>
           </div>
 
-          {/* Secondary Stats (Following the Dashboard "Quick Stats" style) */}
           <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
              <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-purple-50 rounded-lg text-purple-500">
+                <div className="p-2 bg-[#F3EDF9] rounded-lg text-[#A989C8]">
                   <CheckCircle size={22} />
                 </div>
              </div>
@@ -138,11 +138,11 @@ const KYCVerifications: React.FC = () => {
               >
                 {tab}
                 <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                  activeTab === tab ? 'bg-[#A989C8] text-white' : 'bg-gray-100 text-gray-400'
+                  activeTab === tab ? 'bg-[#F3EDF9] text-[#A989C8]' : 'bg-gray-100 text-gray-400'
                 }`}>
                   {tab === 'pending' ? stats.pending : tab === 'approved' ? stats.approved : stats.rejected}
                 </span>
-                {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#A989C8]" />}
+                {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#A989C8] to-[#A87DC2]" />}
               </button>
             ))}
           </div>
@@ -166,9 +166,9 @@ const KYCVerifications: React.FC = () => {
                     email={item.user_info.email}
                     phone={item.phone_number}
                     citizenship={item.citizenship_number}
-                    docsCount={1}
+                    docsCount={1 + (item.document_back_image ? 1 : 0) + (item.selfie_image ? 1 : 0)}
                     submittedAt={new Date(item.submitted_at).toLocaleDateString()}
-                    avatarUrl={`https://i.pravatar.cc/150?u=${item.user_info.email}`}
+                    avatarUrl={item.selfie_image || `https://i.pravatar.cc/150?u=${item.user_info.email}`}
                     status={item.status}
                     onReview={() => { setSelectedKyc(item); setIsModalOpen(true); }}
                   />
@@ -194,7 +194,7 @@ const KYCVerifications: React.FC = () => {
                       {item.status === 'approved' ? 'Verification approved' : 'New verification submitted'}
                     </p>
                     <p className="text-[11px] text-gray-400 font-medium">
-                      {item.full_name} • {new Date(item.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {item.full_name} &bull; {new Date(item.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                 </div>
                 <ChevronRight size={16} className="text-gray-300" />

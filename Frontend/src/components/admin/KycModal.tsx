@@ -15,6 +15,8 @@ interface KYCData {
   phone_number: string;
   citizenship_number: string;
   document_image: string;
+  document_back_image: string | null;
+  selfie_image: string | null;
   status: 'pending' | 'approved' | 'rejected';
   submitted_at: string;
   verified_by_info: any;
@@ -56,12 +58,12 @@ export const KycModal: React.FC<KycModalProps> = ({
               Back to Dashboard
             </button>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white rounded-lg shadow-sm border border-gray-100">
-                <Shield className="text-purple-600" size={24} />
+              <div className="p-2 bg-gradient-to-br from-[#A989C8] to-[#A87DC2] rounded-lg shadow-sm">
+                <Shield className="text-white" size={24} />
               </div>
               <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">KYC Verification Detail</h1>
             </div>
-            <p className="text-gray-500 text-sm ml-12">Review user documents and approve or reject verification</p>
+            <p className="text-gray-500 text-sm ml-14">Review user documents and approve or reject verification</p>
           </div>
 
           <div className={`px-4 py-1.5 rounded-lg text-sm font-bold capitalize ${
@@ -77,19 +79,25 @@ export const KycModal: React.FC<KycModalProps> = ({
           <div className="col-span-12 lg:col-span-8 space-y-6">
             
             {/* 1. Personal Information Card */}
-            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Personal Information</h3>
               <div className="flex flex-col md:flex-row gap-8">
-                <img 
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200" 
-                  alt="User avatar" 
-                  className="w-24 h-24 rounded-xl object-cover ring-4 ring-gray-50"
-                />
+                {kyc.selfie_image ? (
+                  <img 
+                    src={kyc.selfie_image}
+                    alt="User selfie"
+                    className="w-24 h-24 rounded-xl object-cover ring-4 ring-gray-50"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-[#F3EDF9] flex items-center justify-center text-[#A989C8] font-bold text-2xl ring-4 ring-gray-50">
+                    {kyc.user_info.first_name?.[0] || ''}{kyc.user_info.last_name?.[0] || ''}
+                  </div>
+                )}
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12">
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-xl font-bold text-gray-900">{kyc.user_info.first_name} {kyc.user_info.last_name}</span>
-                      <span className="bg-blue-50 text-blue-600 text-[10px] uppercase font-heavy px-2 py-0.5 rounded tracking-wider">
+                      <span className="bg-[#F3EDF9] text-[#A989C8] text-[10px] uppercase font-heavy px-2 py-0.5 rounded tracking-wider">
                         {kyc.user_info.user_type}
                       </span>
                     </div>
@@ -108,11 +116,11 @@ export const KycModal: React.FC<KycModalProps> = ({
             </div>
 
             {/* 2. Submitted Documents Card */}
-            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Submitted Documents</h3>
               <div className="border border-gray-100 rounded-xl p-6">
                 <div className="flex items-start gap-3 mb-6">
-                  <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                  <div className="p-2 bg-[#F3EDF9] text-[#A989C8] rounded-lg">
                     <FileText size={20} />
                   </div>
                   <div>
@@ -122,38 +130,51 @@ export const KycModal: React.FC<KycModalProps> = ({
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Front Side</span>
-                    <div className="aspect-[1.6/1] bg-gray-50 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-gray-300">
-                       {/* You would put kyc.document_image_front here */}
-                       No Image
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Front Side</span>
+                      {kyc.document_image ? (
+                        <img src={kyc.document_image} alt="Document front" className="w-full rounded-xl border border-gray-200 object-cover" />
+                      ) : (
+                        <div className="aspect-[1.6/1] bg-gray-50 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-gray-300">
+                          No Image
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Back Side</span>
+                      {kyc.document_back_image ? (
+                        <img src={kyc.document_back_image} alt="Document back" className="w-full rounded-xl border border-gray-200 object-cover" />
+                      ) : (
+                        <div className="aspect-[1.6/1] bg-gray-50 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-gray-300">
+                          No Image
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Back Side</span>
-                    <div className="aspect-[1.6/1] bg-gray-50 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-gray-300">
-                       No Image
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
             {/* 3. Selfie Section */}
-            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Selfie with ID</h3>
-              <img 
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=600" 
-                alt="Selfie verification" 
-                className="w-full max-w-md rounded-2xl object-cover aspect-square shadow-md"
-              />
+              {kyc.selfie_image ? (
+                <img 
+                  src={kyc.selfie_image}
+                  alt="Selfie verification" 
+                  className="w-full max-w-md rounded-2xl object-cover aspect-square shadow-md"
+                />
+              ) : (
+                <div className="w-full max-w-md aspect-square bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex items-center justify-center text-gray-300">
+                  No selfie uploaded
+                </div>
+              )}
             </div>
           </div>
 
           {/* RIGHT COLUMN (4/12) */}
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm sticky top-10">
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm sticky top-10">
               <h3 className="text-lg font-bold text-gray-900 mb-8">Submission Details</h3>
               
               <div className="space-y-6">
@@ -198,7 +219,6 @@ export const KycModal: React.FC<KycModalProps> = ({
   );
 };
 
-// Sub-components for cleaner code
 const InfoRow = ({ icon, text }: { icon: React.ReactNode, text: string }) => (
   <div className="flex items-center gap-2 text-gray-500 text-[13px] font-medium">
     <span className="text-gray-400">{icon}</span>

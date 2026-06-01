@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { CheckCircle2, Loader2, ShieldCheck, FileSignature } from 'lucide-react';
 import PublicNavbar from '../../components/Navbar/PublicNavbar';
 import Footer from '../../components/Footer';
 import API from '../../services/api';
@@ -11,6 +11,7 @@ const PaymentSuccess: React.FC = () => {
   const [verifying, setVerifying] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
+  const [agreementId, setAgreementId] = useState<number | null>(null);
   const [transactionId, setTransactionId] = useState('');
   const [refId, setRefId] = useState('');
 
@@ -31,6 +32,9 @@ const PaymentSuccess: React.FC = () => {
       setBookingData(response.data);
       setTransactionId(response.data.esewa_ref_id || '');
       setRefId(response.data.esewa_ref_id || '');
+      if (response.data.agreement_info) {
+        setAgreementId(response.data.agreement_info.id);
+      }
       setVerifying(false);
     } catch (error: any) {
       console.error('Error fetching booking details:', error);
@@ -69,6 +73,9 @@ const PaymentSuccess: React.FC = () => {
         // Get booking details
         const bookingResponse = await API.get(`bookings/${bookingId}/`);
         setBookingData(bookingResponse.data);
+        if (bookingResponse.data.agreement_info) {
+          setAgreementId(bookingResponse.data.agreement_info.id);
+        }
         setVerifying(false);
       } else {
         throw new Error(response.data.error || 'Payment verification failed');
@@ -114,10 +121,10 @@ const PaymentSuccess: React.FC = () => {
                   Try Again
                 </button>
                 <button
-                  onClick={() => navigate('/properties')}
+                  onClick={() => navigate('/home')}
                   className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
                 >
-                  Back to Properties
+                  Back to Home
                 </button>
               </div>
             </div>
@@ -208,13 +215,30 @@ const PaymentSuccess: React.FC = () => {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-[#A989C8] font-bold">2</span>
-                  <span className="text-gray-700">You'll receive a confirmation email shortly</span>
+                  <span className="text-gray-700">Sign the digital rental agreement to finalize your tenancy</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-[#A989C8] font-bold">3</span>
                   <span className="text-gray-700">View your booking in "My Bookings" to see all details</span>
                 </li>
               </ul>
+              {agreementId ? (
+                <Link
+                  to={`/agreements/${agreementId}`}
+                  className="mt-6 w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#A989C8] text-white rounded-xl font-bold hover:bg-[#9677b4] transition-colors shadow-md"
+                >
+                  <FileSignature size={18} />
+                  Sign Rental Agreement
+                </Link>
+              ) : (
+                <Link
+                  to="/agreements"
+                  className="mt-6 w-full flex items-center justify-center gap-2 px-6 py-3 border border-[#A989C8] text-[#A989C8] rounded-xl font-bold hover:bg-[#A989C8]/5 transition-colors"
+                >
+                  <FileSignature size={18} />
+                  View My Agreements
+                </Link>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -226,7 +250,7 @@ const PaymentSuccess: React.FC = () => {
                 View My Bookings
               </button>
               <button
-                onClick={() => navigate('/properties')}
+                onClick={() => navigate('/home')}
                 className="px-8 py-3 border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
               >
                 Browse More Properties

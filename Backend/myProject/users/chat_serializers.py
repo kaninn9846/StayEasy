@@ -84,7 +84,29 @@ class ChatSerializer(serializers.ModelSerializer):
         return None
 
     def get_unread_count(self, obj):
-        return obj.messages.filter(is_read=False).count()
+        request = self.context.get('request')
+        if not (request and request.user.is_authenticated):
+            return 0
+
+        user = request.user
+
+        # Landlord detection: JWT payload
+        auth = getattr(request, 'auth', None)
+        payload = getattr(auth, 'payload', {}) if auth else {}
+        landlord_id = payload.get('landlord_id')
+
+        # Landlord detection: email match (same logic as _get_landlord_id)
+        if not landlord_id and user.email:
+            try:
+                landlord = LandlordUser.objects.get(email__iexact=user.email)
+                landlord_id = landlord.id
+            except LandlordUser.DoesNotExist:
+                pass
+
+        if landlord_id and obj.landlord_id == landlord_id:
+            return obj.messages.filter(sender_user__isnull=False, is_read=False).count()
+
+        return obj.messages.filter(sender_landlord__isnull=False, is_read=False).count()
 
     def get_room_id(self, obj):
         a = obj.user_id

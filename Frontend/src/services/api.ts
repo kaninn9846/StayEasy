@@ -2,9 +2,6 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: "http://127.0.0.1:8000/api/users/",
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 // 🔐 Attach JWT token automatically
@@ -94,14 +91,12 @@ export const getKYCStatus = async () => {
 
 export const submitKYC = async (formData: FormData) => {
   try {
-    const response = await API.post("kyc/submit/", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await API.post("kyc/submit/", formData);
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("KYC submit error:", error);
+    console.error("KYC error response data:", JSON.stringify(error.response?.data));
+    console.error("KYC error status:", error.response?.status);
     throw error;
   }
 };
@@ -586,6 +581,41 @@ export const downloadAgreementPDF = async (agreementId: number) => {
   } catch (error) {
     console.error('Failed to download PDF:', error);
     return false;
+  }
+};
+
+// ================= NOTIFICATION APIs =================
+export const getNotifications = async () => {
+  try {
+    const response = await API.get("notifications/");
+    return response.data;
+  } catch (error) {
+    return [];
+  }
+};
+
+export const getUnreadNotificationCount = async () => {
+  try {
+    const response = await API.get("notifications/unread-count/");
+    return response.data;
+  } catch (error) {
+    return { unread_count: 0 };
+  }
+};
+
+export const markNotificationRead = async (id: number) => {
+  try {
+    await API.patch(`notifications/${id}/`, { is_read: true });
+  } catch (error) {
+    console.error("Failed to mark notification read:", error);
+  }
+};
+
+export const markAllNotificationsRead = async () => {
+  try {
+    await API.post("notifications/mark-all-read/");
+  } catch (error) {
+    console.error("Failed to mark all notifications read:", error);
   }
 };
 

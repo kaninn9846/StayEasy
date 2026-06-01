@@ -20,25 +20,25 @@ const Step3Details: React.FC<Props> = ({ formData, setFormData }) => {
   const activeList = isLand ? landFeatures : amenities;
 
   const handleToggle = (value: string) => {
-    const current = formData.features || [];
+    const current = formData.amenities || [];
 
     const updated = current.includes(value)
       ? current.filter((i: string) => i !== value)
       : [...current, value];
 
-    setFormData({ ...formData, features: updated });
+    setFormData({ ...formData, amenities: updated });
   };
 
   const handleAddCustom = () => {
     const value = inputValue.trim();
     if (!value) return;
 
-    const current = formData.features || [];
+    const current = formData.amenities || [];
 
     if (!current.includes(value)) {
       setFormData({
         ...formData,
-        features: [...current, value]
+        amenities: [...current, value]
       });
     }
 
@@ -46,13 +46,13 @@ const Step3Details: React.FC<Props> = ({ formData, setFormData }) => {
   };
 
   const handleRemove = (value: string) => {
-    const updated = (formData.features || []).filter((i: string) => i !== value);
-    setFormData({ ...formData, features: updated });
+    const updated = (formData.amenities || []).filter((i: string) => i !== value);
+    setFormData({ ...formData, amenities: updated });
   };
 
   const inputClass = "w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#A87DC2] outline-none";
 
-  const isSelected = (value: string) => (formData.features || []).includes(value);
+  const isSelected = (value: string) => (formData.amenities || []).includes(value);
 
   return (
     <div className="space-y-8">
@@ -158,7 +158,7 @@ const Step3Details: React.FC<Props> = ({ formData, setFormData }) => {
 
         {/* Selected Items */}
         <div className="flex flex-wrap gap-2 mt-4">
-          {(formData.features || []).map((item: string) => (
+          {(formData.amenities || []).map((item: string) => (
             <span
               key={item}
               className="px-4 py-2 rounded-full bg-[#A87DC2]/10 text-[#A87DC2] border border-[#A87DC2] text-sm flex items-center gap-2"

@@ -45,7 +45,6 @@ const AdminDashboard: React.FC = () => {
   }, []);
 
   const pendingKyc = kycList.filter(k => k.status === 'pending');
-  // Use the 'available' flag from PropertyData: available === true means the property is not booked
   const availableProps = properties.filter(p => p.available).length;
 
   return (
@@ -57,7 +56,9 @@ const AdminDashboard: React.FC = () => {
         <div className="flex justify-between items-end mb-10">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Shield className="text-[#A989C8]" size={24} />
+              <div className="p-2 bg-gradient-to-br from-[#A989C8] to-[#A87DC2] rounded-xl shadow-sm">
+                <Shield className="text-white" size={20} />
+              </div>
               <h1 className="text-3xl font-black text-gray-900 tracking-tight">Admin Dashboard</h1>
             </div>
             <p className="text-gray-500 font-medium">Welcome back! Here's your platform overview</p>
@@ -90,7 +91,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* --- QUICK ACTIONS (The Navigation Hub) --- */}
+        {/* --- QUICK ACTIONS --- */}
         <div className="mb-10">
           <h3 className="text-lg font-bold text-gray-900 mb-5 ml-1">Quick Actions</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -98,7 +99,7 @@ const AdminDashboard: React.FC = () => {
               <ActionCard title="KYC Verifications" subtext={`${stats.pending} pending`} icon={<Shield size={20} className="text-orange-500"/>} iconBg="bg-orange-50" />
             </div>
             <div onClick={() => navigate('/admin/users')} className="cursor-pointer transform transition-all active:scale-95 hover:shadow-md rounded-3xl">
-              <ActionCard title="User Management" subtext={`${stats.total} total users`} icon={<Users size={20} className="text-purple-500"/>} iconBg="bg-purple-50" />
+              <ActionCard title="User Management" subtext={`${stats.total} total users`} icon={<Users size={20} className="text-[#A989C8]"/>} iconBg="bg-[#F3EDF9]" />
             </div>
             <div onClick={() => navigate('/admin/properties')} className="cursor-pointer transform transition-all active:scale-95 hover:shadow-md rounded-3xl">
               <ActionCard title="Properties" subtext={`${properties.length} listings`} icon={<Home size={20} className="text-blue-500"/>} iconBg="bg-blue-50" />
@@ -109,7 +110,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* --- BOTTOM SECTION: DATA LISTS --- */}
+        {/* --- BOTTOM SECTION --- */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* KYC Preview */}
           <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm">
@@ -132,7 +133,13 @@ const AdminDashboard: React.FC = () => {
                 pendingKyc.slice(0, 2).map((kyc) => (
                   <div key={kyc.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <div className="flex items-center gap-4">
-                      <img src={`https://i.pravatar.cc/150?u=${kyc.user_info.email}`} className="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="" />
+                      {kyc.selfie_image ? (
+                        <img src={kyc.selfie_image} className="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover" alt="" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-[#F3EDF9] border-2 border-white shadow-sm flex items-center justify-center text-[#A989C8] font-bold text-xs">
+                          {kyc.user_info.first_name?.[0] || ''}{kyc.user_info.last_name?.[0] || ''}
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm font-bold text-gray-800">{kyc.full_name}</p>
                         <p className="text-[11px] text-gray-400 font-medium">Submitted {new Date(kyc.submitted_at).toLocaleDateString()}</p>

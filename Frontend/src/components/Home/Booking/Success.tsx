@@ -21,38 +21,36 @@ export default function Success({ bookingData, onSignAgreement }: { bookingData:
         return;
       }
       
-      if (!bookingData.moveInDate) {
+      if (!bookingData.moveInDate && !bookingData.check_in) {
         setError("Missing move-in date");
         setLoading(false);
         return;
       }
 
-      // Calculate check-out date (assuming lease duration in months)
-      const checkInDate = new Date(bookingData.moveInDate);
-      const checkOutDate = new Date(checkInDate);
-      checkOutDate.setMonth(checkOutDate.getMonth() + parseInt(bookingData.leaseDuration || 12));
+      const checkInStr = bookingData.check_in || bookingData.moveInDate;
+      const checkOutStr = bookingData.check_out || bookingData.moveOutDate;
 
-      // Format dates as YYYY-MM-DD
-      const checkInStr = checkInDate.toISOString().split('T')[0];
-      const checkOutStr = checkOutDate.toISOString().split('T')[0];
+      if (!checkOutStr) {
+        setError("Missing move-out date");
+        setLoading(false);
+        return;
+      }
 
-      // Calculate total price based on property price (example: 25000 per month)
-      const propertyPrice = 25000;
-      const months = parseInt(bookingData.leaseDuration || 12);
-      const totalPrice = propertyPrice * months;
+      // Calculate total price from monthly rate
+      const propertyPrice = bookingData.total_price || 25000;
 
       console.log("📍 Step 2: Prepared booking data:", {
         propertyId: parseInt(bookingData.propertyId),
         checkIn: checkInStr,
         checkOut: checkOutStr,
-        totalPrice: totalPrice
+        totalPrice: propertyPrice
       });
 
       const response = await createBooking(
         parseInt(bookingData.propertyId),
         checkInStr,
         checkOutStr,
-        totalPrice
+        propertyPrice
       );
       
       console.log("📍 Step 3: Booking created successfully:", response);
@@ -147,8 +145,8 @@ export default function Success({ bookingData, onSignAgreement }: { bookingData:
         <h3 className="font-bold text-gray-800 border-b border-gray-200 pb-4 mb-4">Booking Details</h3>
         <div className="flex justify-between text-sm"><span className="text-gray-400 font-medium">Booking ID</span><span className="font-bold text-gray-800">{booking.id}</span></div>
         <div className="flex justify-between text-sm"><span className="text-gray-400 font-medium">Name</span><span className="font-bold text-gray-800">{bookingData.fullName}</span></div>
-        <div className="flex justify-between text-sm"><span className="text-gray-400 font-medium">Move-in Date</span><span className="font-bold text-gray-800">{new Date(booking.check_in).toLocaleDateString()}</span></div>
-        <div className="flex justify-between text-sm"><span className="text-gray-400 font-medium">Duration</span><span className="font-bold text-gray-800">{bookingData.leaseDuration} months</span></div>
+        <div className="flex justify-between text-sm"><span className="text-gray-400 font-medium">Move In Date</span><span className="font-bold text-gray-800">{new Date(booking.check_in).toLocaleDateString()}</span></div>
+        <div className="flex justify-between text-sm"><span className="text-gray-400 font-medium">Move Out Date</span><span className="font-bold text-gray-800">{new Date(booking.check_out).toLocaleDateString()}</span></div>
         <div className="flex justify-between text-sm pt-4 border-t border-gray-200"><span className="text-gray-400 font-medium">Total Paid</span><span className="font-bold text-[#A989C8] text-lg">NPR {parseInt(booking.total_price).toLocaleString()}</span></div>
       </div>
 

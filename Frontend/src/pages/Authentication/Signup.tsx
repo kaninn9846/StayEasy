@@ -11,6 +11,8 @@ import {
   Building
 } from "lucide-react";
 import API from "../../services/api";
+import PasswordStrengthBar from "../../components/Auth/PasswordStrengthBar";
+import { validatePassword, isPasswordValid } from "../../utils/passwordValidation";
 import "./Auth.css";
 
 const Signup: React.FC = () => {
@@ -28,6 +30,10 @@ const Signup: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const passwordRules = validatePassword(password);
+  const passwordValid = isPasswordValid(passwordRules);
+  const passwordMismatch = password2.length > 0 && password !== password2;
+
   // ===============================
   // HANDLE SIGNUP SUBMIT
   // ===============================
@@ -35,9 +41,13 @@ const Signup: React.FC = () => {
     e.preventDefault();
     setError("");
 
-    // Frontend password match check
+    if (!passwordValid) {
+      setError("Password does not meet all requirements.");
+      return;
+    }
+
     if (password !== password2) {
-      setError("Passwords do not match");
+      setError("Passwords do not match.");
       return;
     }
 
@@ -232,6 +242,7 @@ const Signup: React.FC = () => {
                     {showPassword ? <EyeOff size={18} className="input-icon" /> : <Eye size={18} className="input-icon" />}
                   </button>
                 </div>
+                <PasswordStrengthBar password={password} />
               </div>
 
               {/* CONFIRM PASSWORD */}
@@ -247,13 +258,18 @@ const Signup: React.FC = () => {
                     required
                   />
                 </div>
+                {passwordMismatch && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Passwords do not match
+                  </p>
+                )}
               </div>
 
               {/* ERROR */}
               {error && <p className="auth-error">{error}</p>}
 
               {/* SUBMIT BUTTON */}
-              <button type="submit" className="submit-btn" disabled={loading}>
+              <button type="submit" className="submit-btn" disabled={loading || !passwordValid}>
                 {loading ? "Creating Account..." : "Create Account"}
               </button>
             </form>

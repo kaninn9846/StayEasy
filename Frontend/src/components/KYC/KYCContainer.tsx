@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import KYCStep1 from "./KYCStep1";
 import KYCStep2 from "./KYCStep2";
 import KYCStep3 from "./KYCStep3";
-import axios from "axios";
-import { getKYCStatus } from "../../services/api";
+import { getKYCStatus, submitKYC } from "../../services/api";
 
 // ✅ KYC Form Data Type
 export interface KYCFormData {
@@ -65,6 +64,10 @@ export default function KYCContainer() {
         setError("You must fill this field to continue.");
         return;
       }
+      if (formData.phone_number.length !== 10) {
+        setError("Phone number must be exactly 10 digits.");
+        return;
+      }
     }
 
     if (step === 2) {
@@ -108,13 +111,18 @@ export default function KYCContainer() {
     setError(null);
     try {
       const status = await getKYCStatus();
-      if (status?.status && status.status !== 'not_submitted') {
-        alert("Your KYC has already been submitted.");
+      if (status && status.status && status.status !== 'not_submitted') {
+        const statusMsg = status.status === 'pending'
+          ? "Your KYC is already under review. Please wait for admin approval."
+          : status.status === 'approved'
+          ? "Your KYC has already been approved."
+          : "Your KYC has already been submitted.";
+        alert(statusMsg);
         navigate("/dashboard");
         return;
       }
     } catch {
-      // continue with submit
+      // network error — proceed to submit anyway
     }
     handleSubmit();
   };
@@ -131,6 +139,9 @@ export default function KYCContainer() {
       }
       if (!formData.phone_number.trim()) {
         throw new Error("Phone number is required");
+      }
+      if (formData.phone_number.length !== 10) {
+        throw new Error("Phone number must be exactly 10 digits");
       }
       if (!formData.citizenship_number.trim()) {
         throw new Error("Citizenship number is required");
@@ -152,29 +163,25 @@ export default function KYCContainer() {
         submitData.append("selfie_image", formData.selfie_image);
       }
 
-      // ✅ Get JWT token from localStorage
-      const token = localStorage.getItem("access");
-      if (!token) {
-        throw new Error("Authentication token not found. Please login again.");
-      }
-
-      // ✅ Send to Django API
-      const response = await axios.post(
-        "http://localhost:8000/api/users/kyc/submit/",
-        submitData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      // ✅ Use API instance (handles auth header, base URL, no manual Content-Type)
+      await submitKYC(submitData);
 
       // ✅ Success - redirect to dashboard
       alert("KYC submitted successfully! It will be reviewed by an admin.");
       navigate("/dashboard");
     } catch (err: any) {
-      const errorMsg = err.response?.data?.error || err.message || "Failed to submit KYC";
+      const data = err.response?.data;
+      let errorMsg = "Failed to submit KYC";
+      if (typeof data === "string") {
+        errorMsg = data;
+      } else if (data?.error) {
+        errorMsg = data.error;
+      } else if (data && typeof data === "object") {
+        const messages = Object.values(data).flat().join("; ");
+        if (messages) errorMsg = messages;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
       setError(errorMsg);
     } finally {
       setLoading(false);

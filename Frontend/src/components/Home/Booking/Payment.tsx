@@ -12,8 +12,10 @@ export default function Payment({
   bookingData?: {
     propertyId?: number;
     total_price?: number;
+    check_in?: string;
+    check_out?: string;
     moveInDate?: string;
-    leaseDuration?: string;
+    moveOutDate?: string;
   };
 }) {
   const navigate = useNavigate();
@@ -25,7 +27,16 @@ export default function Payment({
 
   // Dynamic price calculations
   const totalAmount = bookingData?.total_price || 0;
-  const monthlyPrice = Math.round(totalAmount / (parseInt(bookingData?.leaseDuration || "12")));
+  const checkIn = bookingData?.check_in || bookingData?.moveInDate || "";
+  const checkOut = bookingData?.check_out || bookingData?.moveOutDate || "";
+  let months = 1;
+  if (checkIn && checkOut) {
+    const inD = new Date(checkIn);
+    const outD = new Date(checkOut);
+    const diffDays = Math.ceil((outD.getTime() - inD.getTime()) / (1000 * 60 * 60 * 24));
+    months = Math.max(1, Math.ceil(diffDays / 30));
+  }
+  const monthlyPrice = Math.round(totalAmount / months);
   const securityDeposit = Math.round(monthlyPrice); // 1 month deposit
   const serviceFee = Math.round(totalAmount * 0.05);
   const partialAmount = Math.round(monthlyPrice + securityDeposit); // first month + deposit
@@ -47,22 +58,22 @@ export default function Payment({
         return;
       }
 
-      if (!bookingData?.moveInDate) {
+      if (!checkIn) {
         setError("Missing move-in date");
         setIsProcessing(false);
         return;
       }
 
-      // Calculate check-out date
-      const checkInDate = new Date(bookingData.moveInDate);
-      const checkOutDate = new Date(checkInDate);
-      checkOutDate.setMonth(checkOutDate.getMonth() + (parseInt(bookingData.leaseDuration || "12")));
-      const checkOutStr = checkOutDate.toISOString().split('T')[0];
+      if (!checkOut) {
+        setError("Missing move-out date");
+        setIsProcessing(false);
+        return;
+      }
 
       console.log("📍 Booking to create:", {
         property: bookingData.propertyId,
-        check_in: bookingData.moveInDate,
-        check_out: checkOutStr,
+        check_in: checkIn,
+        check_out: checkOut,
         total_price: totalAmount,
         payment_type: paymentType,
       });
@@ -70,8 +81,8 @@ export default function Payment({
       // Create booking first, then initiate eSewa payment
       const bookingResponse = await API.post("bookings/create/", {
         property: bookingData.propertyId,
-        check_in: bookingData.moveInDate,
-        check_out: checkOutStr,
+        check_in: checkIn,
+        check_out: checkOut,
         total_price: totalAmount,
         payment_type: paymentType,
       });
@@ -242,7 +253,7 @@ export default function Payment({
             {/* Breakdown */}
             <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
-                <p className="text-gray-600">Rent ({bookingData?.leaseDuration} months)</p>
+                <p className="text-gray-600">Rent ({months} {months === 1 ? 'month' : 'months'})</p>
                 <p className="font-semibold text-gray-900">NPR {totalAmount.toLocaleString()}</p>
               </div>
               <div className="flex justify-between items-center">

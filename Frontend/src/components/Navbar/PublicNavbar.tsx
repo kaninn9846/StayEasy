@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Home, ChevronDown, LogOut, Settings, MessageCircle, Menu, X, FileText,
   Shield, Users, CreditCard, RotateCcw, PlusCircle,
@@ -20,6 +20,8 @@ export default function PublicNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [unread, setUnread] = useState(0);
+  const [newMessage, setNewMessage] = useState(false);
+  const newMsgTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const [kycPending, setKycPending] = useState(false);
   const [unsignedCount, setUnsignedCount] = useState(0);
   const [pendingRefundCount, setPendingRefundCount] = useState(0);
@@ -61,6 +63,9 @@ export default function PublicNavbar() {
     const handleMessage = (msg: MessagePayload) => {
       if (msg.userId !== user.id) {
         refreshUnread();
+        setNewMessage(true);
+        if (newMsgTimer.current) clearTimeout(newMsgTimer.current);
+        newMsgTimer.current = setTimeout(() => setNewMessage(false), 4000);
       }
     };
     const handleNotification = () => { refreshUnread(); fetchBadges(); };
@@ -74,6 +79,7 @@ export default function PublicNavbar() {
       socketService.removeListener("receive-message", handleMessage);
       socketService.removeListener("new-notification", handleNotification as any);
       clearInterval(pollInterval);
+      if (newMsgTimer.current) clearTimeout(newMsgTimer.current);
     };
   }, [user, refreshUnread, fetchBadges]);
 
@@ -166,12 +172,20 @@ export default function PublicNavbar() {
               <>
                 <Link
                   to="/chat"
-                  className="hidden sm:flex items-center justify-center w-9 h-9 hover:bg-gray-100 rounded-lg transition relative group"
+                  className={`hidden sm:flex items-center justify-center w-9 h-9 rounded-lg transition relative group ${
+                    newMessage ? "bg-red-50" : "hover:bg-gray-100"
+                  }`}
                   title="Messages"
                 >
-                  <MessageCircle className="w-5 h-5 text-gray-700 group-hover:text-[#A989C8]" />
+                  <MessageCircle className={`w-5 h-5 transition-colors ${
+                    newMessage ? "text-red-500" : "text-gray-700 group-hover:text-[#A989C8]"
+                  }`} />
                   {unread > 0 && (
-                    <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full shadow-sm" />
+                    <span className={`absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm ${
+                      newMessage ? "animate-pulse ring-2 ring-red-300" : ""
+                    }`}>
+                      {unread > 9 ? "9+" : unread}
+                    </span>
                   )}
                 </Link>
                 <div className="hidden sm:block"><NotificationsDropdown /></div>

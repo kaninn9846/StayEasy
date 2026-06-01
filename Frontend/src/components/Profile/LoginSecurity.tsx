@@ -1,6 +1,8 @@
 import { Lock, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { changePassword } from '../../services/api';
+import PasswordStrengthBar from '../Auth/PasswordStrengthBar';
+import { validatePassword, isPasswordValid } from '../../utils/passwordValidation';
 
 const LoginSecurity = () => {
   const [isChanging, setIsChanging] = useState(false);
@@ -11,15 +13,18 @@ const LoginSecurity = () => {
   const [messageType, setMessageType] = useState<'success' | 'error'>('error');
   const [loading, setLoading] = useState(false);
 
+  const passwordRules = validatePassword(newPassword);
+  const passwordValid = isPasswordValid(passwordRules);
+  const passwordMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
+
   const handleChangePassword = async () => {
-    // Simple validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       setMessage('Please fill all fields.');
       setMessageType('error');
       return;
     }
-    if (newPassword.length < 8) {
-      setMessage('New password must be at least 8 characters long.');
+    if (!passwordValid) {
+      setMessage('Password does not meet all requirements.');
       setMessageType('error');
       return;
     }
@@ -88,12 +93,13 @@ const LoginSecurity = () => {
             />
             <input
               type="password"
-              placeholder="New Password (minimum 8 characters)"
+              placeholder="New Password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               disabled={loading}
               className="w-full p-3 border border-gray-300 rounded-xl disabled:opacity-50"
             />
+            <PasswordStrengthBar password={newPassword} />
             <input
               type="password"
               placeholder="Confirm New Password"
@@ -102,6 +108,11 @@ const LoginSecurity = () => {
               disabled={loading}
               className="w-full p-3 border border-gray-300 rounded-xl disabled:opacity-50"
             />
+            {passwordMismatch && (
+              <p className="text-xs text-red-500 -mt-2">
+                Passwords do not match
+              </p>
+            )}
             {message && (
               <div className={`flex items-center gap-2 p-3 rounded-lg ${
                 messageType === 'success'
@@ -115,7 +126,7 @@ const LoginSecurity = () => {
             <button
               className="w-full px-6 py-2.5 bg-[#A989C8] text-white rounded-xl text-sm font-medium hover:bg-[#9676b5] transition-colors shadow-md shadow-[#A989C8]/20 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleChangePassword}
-              disabled={loading}
+              disabled={loading || !passwordValid}
             >
               {loading ? 'Saving...' : 'Save Password'}
             </button>

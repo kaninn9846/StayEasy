@@ -119,14 +119,20 @@ export default function PropertyDetails() {
   const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % images.length);
   const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
 
-  const amenities = [
-    { icon: Wifi, label: "WiFi", available: true },
-    { icon: Car, label: "Parking", available: true },
-    { icon: Droplets, label: "Water 24/7", available: true },
-    { icon: Lock, label: "Security", available: true },
-    { icon: Sofa, label: "Furnished", available: true },
-    { icon: CheckCircle2, label: "Balcony", available: true },
-  ];
+  const amenityIconMap: Record<string, any> = {
+    wifi: Wifi, parking: Car, water: Droplets, electricity: Star,
+    security: Lock, ac: Maximize, balcony: Maximize, garden: CheckCircle2,
+    furnished: Sofa, "road access": Car, drainage: Droplets,
+    "water access": Droplets, "electricity nearby": Star,
+    "road width": Maximize, "flat plot": CheckCircle2, "soil suitable": CheckCircle2,
+  };
+  const getAmenityIcon = (name: string) => {
+    const key = name.toLowerCase().trim();
+    for (const [pattern, icon] of Object.entries(amenityIconMap)) {
+      if (key.includes(pattern)) return icon;
+    }
+    return CheckCircle2;
+  };
 
   // Handler for opening cancel modal and calculating refund
   const handleOpenCancelModal = async () => {
@@ -255,8 +261,6 @@ export default function PropertyDetails() {
         <nav className="flex text-sm text-gray-500 gap-2 mb-8">
           <button onClick={() => navigate("/home")} className="hover:text-[#A989C8] transition font-medium">Home</button>
           <span>/</span>
-          <button onClick={() => navigate("/properties")} className="hover:text-[#A989C8] transition font-medium">Properties</button>
-          <span>/</span>
           <span className="text-gray-700 font-semibold">{property.title}</span>
         </nav>
 
@@ -377,20 +381,22 @@ export default function PropertyDetails() {
             </div>
 
             {/* Amenities */}
-            <div className="bg-white rounded-3xl shadow-lg p-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Amenities</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                {amenities.map((amenity, idx) => {
-                  const Icon = amenity.icon;
-                  return (
-                    <div key={idx} className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-transparent rounded-xl border border-purple-100">
-                      <div className="w-12 h-12 bg-[#A989C8] rounded-lg flex items-center justify-center"><Icon className="w-6 h-6 text-white" /></div>
-                      <span className="font-semibold text-gray-800">{amenity.label}</span>
-                    </div>
-                  );
-                })}
+            {property.amenities && property.amenities.length > 0 && (
+              <div className="bg-white rounded-3xl shadow-lg p-8">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Amenities</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  {property.amenities.map((amenity: string, idx: number) => {
+                    const Icon = getAmenityIcon(amenity);
+                    return (
+                      <div key={idx} className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-transparent rounded-xl border border-purple-100">
+                        <div className="w-12 h-12 bg-[#A989C8] rounded-lg flex items-center justify-center"><Icon className="w-6 h-6 text-white" /></div>
+                        <span className="font-semibold text-gray-800">{amenity}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
 {/* Owner */}
 <div className="bg-white rounded-3xl shadow-lg p-8">
@@ -474,7 +480,7 @@ export default function PropertyDetails() {
                 {property.booking_id ? (
                   <>
                     <button disabled className="w-full py-4 bg-gray-400 text-white font-bold rounded-xl shadow-lg mb-3 cursor-not-allowed flex items-center justify-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-white" /> {property.booking_status === "confirmed" ? "Booked" : property.booking_status === "pending" ? "Pending" : "Processing"}
+                      <span className="w-2 h-2 rounded-full bg-white" /> {property.booking_status === "confirmed" ? "Booked" : "Processing"}
                     </button>
                     <button
                       onClick={handleOpenCancelModal}
