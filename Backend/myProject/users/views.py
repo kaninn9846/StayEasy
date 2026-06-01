@@ -791,7 +791,7 @@ class CheckBookingAvailabilityView(APIView):
             # Check for overlapping active bookings
             conflicts = Booking.objects.filter(
                 property_id=property_id,
-                status__in=['pending', 'processing', 'confirmed']
+                status__in=['processing', 'confirmed']
             ).filter(
                 Q(check_in__lt=check_out) & Q(check_out__gt=check_in)
             )
@@ -971,7 +971,7 @@ class BookingCreateView(generics.CreateAPIView):
         # or exact same dates - prevent all cases
         existing = Booking.objects.filter(
             property=property_obj,
-            status__in=['pending', 'processing', 'confirmed']  # Check active bookings
+            status__in=['processing', 'confirmed']  # Check active bookings
         ).filter(
             # Check for overlapping date ranges
             # Overlap occurs if: check_in < existing.check_out AND check_out > existing.check_in
@@ -988,7 +988,7 @@ class BookingCreateView(generics.CreateAPIView):
         user_existing = Booking.objects.filter(
             user=user,
             property=property_obj,
-            status__in=['pending', 'processing', 'confirmed']
+            status__in=['processing', 'confirmed']
         ).exists()
         
         if user_existing:
@@ -1015,7 +1015,7 @@ class UserBookingListView(generics.ListAPIView):
         # Users can optionally view cancelled bookings via a separate endpoint if needed
         return Booking.objects.filter(
             user=user,
-            status__in=['pending', 'processing', 'confirmed', 'completed']
+            status__in=['processing', 'confirmed', 'completed']
         ).order_by('-created_at')
 
 
@@ -1212,7 +1212,9 @@ class VerifyEsewaPaymentView(views.APIView):
     """Verify eSewa 2.0 payment response with SHA256 signature verification"""
     permission_classes = [permissions.IsAuthenticated]
 
-    @transaction.atomic
+    # Intentionally NOT using @transaction.atomic here.
+    # We want booking.save() to commit immediately so payment_status='completed' sticks
+    # even if the subsequent agreement creation fails.
     def post(self, request):
         """
         Verify eSewa payment response
@@ -1268,11 +1270,12 @@ class VerifyEsewaPaymentView(views.APIView):
             # Get and update booking
             booking = Booking.objects.get(id=booking_id, user=request.user)
             
-            # Update booking with payment details — stays pending until agreement is signed
+            # Update booking with payment details
             booking.esewa_transaction_id = response_data.get('oid')
             booking.esewa_ref_id = response_data.get('refId')
             booking.payment_status = 'completed'
             booking.payment_method = 'esewa'
+            booking.status = 'processing'
             booking.save()
 
             # Create or update Payment record
@@ -1287,73 +1290,44 @@ class VerifyEsewaPaymentView(views.APIView):
                 }
             )
 
-            # Auto-generate Rental Agreement
+            # Create agreement (separate from booking save — no transaction wrapping)
+            agreement = None
             try:
-                from .agreement_views import generate_agreement_content
-                property_obj = booking.property
-                landlord_user = property_obj.owner
-                tenant_user = request.user
-
-                # Get profile info for snapshots
-                tenant_profile = getattr(tenant_user, 'profile', None)
-                landlord_profile = getattr(landlord_user, 'profile', None)
-                tenant_kyc = KYC.objects.filter(user=tenant_user).first()
-                landlord_kyc = KYC.objects.filter(user=landlord_user).first()
-
-                # Calculate lease duration
-                duration_days = (booking.check_out - booking.check_in).days
-                duration_months = max(1, round(duration_days / 30))
-
-                # Generate agreement content
-                agreement_content = generate_agreement_content(
-                    booking, property_obj, tenant_user, landlord_user, payment
-                )
-
-                agreement = RentalAgreement.objects.create(
-                    booking=booking,
-                    property=property_obj,
-                    tenant=tenant_user,
-                    landlord=landlord_user,
-                    status='pending_tenant',
-                    agreement_content=agreement_content,
-                    monthly_rent=property_obj.price,
-                    security_deposit=property_obj.security_deposit or 0,
-                    lease_duration_months=duration_months,
-                    tenant_name=f"{tenant_user.first_name} {tenant_user.last_name}".strip() or tenant_user.username,
-                    tenant_email=tenant_user.email,
-                    tenant_phone=tenant_profile.phone if tenant_profile else '',
-                    tenant_citizenship=tenant_kyc.citizenship_number if tenant_kyc else '',
-                    landlord_name=f"{landlord_user.first_name} {landlord_user.last_name}".strip() or landlord_user.username,
-                    landlord_email=landlord_user.email,
-                    landlord_phone=landlord_profile.phone if landlord_profile else '',
-                    landlord_kyc_verified=landlord_kyc.status == 'approved' if landlord_kyc else False,
-                    property_name=property_obj.title,
-                    property_address=f"{property_obj.address}, {property_obj.city}",
-                    property_type=dict(Property.PROPERTY_TYPES).get(property_obj.property_type, property_obj.property_type),
-                    transaction_id=payment.transaction_id or response_data.get('oid', ''),
-                    payment_date=payment.payment_date if payment else timezone.now(),
-                    amount_paid=payment.amount or booking.total_price,
-                )
-
-                # Notify tenant
-                Notification.objects.create(
-                    recipient=tenant_user,
-                    notification_type='agreement_created',
-                    title='Rental Agreement Ready',
-                    message=f"Your rental agreement for {property_obj.title} has been generated. Please review and sign.",
-                    related_entity_type='agreement',
-                    related_entity_id=agreement.id,
-                )
+                prop = booking.property
+                owner = prop.owner
+                if owner:
+                    agreement = RentalAgreement.objects.create(
+                        booking=booking,
+                        property=prop,
+                        tenant=request.user,
+                        landlord=owner,
+                        status='pending_tenant',
+                        agreement_content="Digital Rental Agreement - Generated after payment",
+                        monthly_rent=prop.price or 0,
+                        security_deposit=prop.security_deposit or 0,
+                        lease_duration_months=max(1, round((booking.check_out - booking.check_in).days / 30)),
+                        tenant_name=request.user.get_full_name() or request.user.username,
+                        tenant_email=request.user.email,
+                        landlord_name=owner.get_full_name() or owner.username,
+                        landlord_email=owner.email,
+                        property_name=prop.title,
+                        property_address=f"{prop.address}, {prop.city}",
+                        property_type=dict(Property.PROPERTY_TYPES).get(prop.property_type, prop.property_type),
+                        amount_paid=booking.total_price,
+                    )
             except Exception as e:
-                print(f"Agreement generation error (non-fatal): {e}")
-            
+                print(f"[VERIFY] Agreement creation error: {e}")
+                import traceback
+                traceback.print_exc()
+
             return Response({
                 'success': True,
                 'message': 'Payment verified successfully',
                 'booking_id': booking.id,
+                'agreement_id': agreement.id if agreement else None,
                 'transaction_id': response_data.get('oid'),
                 'payment_status': 'completed',
-                'booking_status': 'confirmed',
+                'booking_status': 'processing',
             }, status=status.HTTP_200_OK)
             
         except Booking.DoesNotExist:

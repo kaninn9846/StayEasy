@@ -531,6 +531,16 @@ export const getAgreements = async () => {
   }
 };
 
+export const getAgreementByBooking = async (bookingId: number) => {
+  const response = await API.get(`agreements/by-booking/${bookingId}/`);
+  return response.data;
+};
+
+export const createAgreementForBooking = async (bookingId: number) => {
+  const response = await API.post(`agreements/create-for-booking/${bookingId}/`);
+  return response.data;
+};
+
 export const getAgreementDetail = async (id: number) => {
   try {
     const response = await API.get(`agreements/${id}/`);

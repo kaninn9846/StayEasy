@@ -9,7 +9,7 @@ interface EsewaPaymentModalProps {
   propertyName: string;
   paymentType: string;
   totalAmount: number;
-  onSuccess: (bookingId: number) => void;
+  onSuccess: (bookingId: number, agreementId?: number) => void;
 }
 
 const SANDBOX_ESEWA_ID = '9806800002';
@@ -51,7 +51,7 @@ const EsewaPaymentModal: React.FC<EsewaPaymentModalProps> = ({
       });
 
       if (verifyRes.data.success) {
-        onSuccess(bookingId);
+        onSuccess(bookingId, verifyRes.data.agreement_id);
       } else {
         throw new Error(verifyRes.data.error || 'Payment verification failed');
       }

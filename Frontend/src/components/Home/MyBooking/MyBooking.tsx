@@ -29,10 +29,10 @@ export default function MyBooking() {
     switch(status.toLowerCase()) {
       case 'confirmed':
         return 'Booked';
-      case 'pending':
-        return 'Pending';
       case 'processing':
         return 'Pending';
+      case 'cancelled':
+        return 'Cancelled';
       default:
         return status;
     }
@@ -42,7 +42,7 @@ export default function MyBooking() {
     switch(status.toLowerCase()) {
       case 'confirmed':
         return 'bg-[#F0FDF4] text-[#10B981]';
-      case 'pending':
+      case 'processing':
         return 'bg-[#FEF3C7] text-[#D97706]';
       case 'cancelled':
         return 'bg-[#FEE2E2] text-[#EF4444]';

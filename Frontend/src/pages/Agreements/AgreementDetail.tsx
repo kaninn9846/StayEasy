@@ -93,7 +93,7 @@ export default function AgreementDetail() {
 
   const isTenant = agreement && user && (agreement.tenant === user.id);
   const isLandlord = agreement && user && (agreement.landlord === user.id);
-  const isAdmin = user?.role === "admin" || user?.is_superuser;
+  const isAdmin = user?.role === "admin" || user?.user_type === "admin";
 
   const canSign = isTenant && agreement?.status === "pending_tenant";
   const canSignAsLandlord = isLandlord && agreement?.status === "pending_landlord";

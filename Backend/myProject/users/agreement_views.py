@@ -15,6 +15,7 @@ from .serializers import (
 from datetime import timedelta
 import io
 import os
+import traceback
 from django.conf import settings
 
 # =====================================================
@@ -120,6 +121,78 @@ Date: ____________                 Date: ____________
     return content
 
 
+def create_agreement_for_booking(booking, user):
+    """Create a rental agreement for a paid booking. Returns (agreement, error)."""
+    try:
+        property_obj = booking.property
+        landlord_user = property_obj.owner
+        if not landlord_user:
+            return None, "Property has no owner"
+
+        tenant_profile = getattr(user, 'profile', None)
+        landlord_profile = getattr(landlord_user, 'profile', None)
+        tenant_kyc = KYC.objects.filter(user=user).first()
+        landlord_kyc = KYC.objects.filter(user=landlord_user).first()
+
+        duration_days = (booking.check_out - booking.check_in).days
+        duration_months = max(1, round(duration_days / 30))
+
+        agreement_content = generate_agreement_content(booking, property_obj, user, landlord_user, None)
+
+        payment = booking.payments.first()
+
+        # Pre-validate key fields
+        monthly_rent = property_obj.price or 0
+        deposit = property_obj.security_deposit or 0
+        tenant_name = f"{user.first_name} {user.last_name}".strip() or user.username
+        landlord_name = f"{landlord_user.first_name} {landlord_user.last_name}".strip() or landlord_user.username
+        prop_type = dict(Property.PROPERTY_TYPES).get(property_obj.property_type, property_obj.property_type)
+
+        agreement = RentalAgreement.objects.create(
+            booking=booking,
+            property=property_obj,
+            tenant=user,
+            landlord=landlord_user,
+            status='pending_tenant',
+            agreement_content=agreement_content,
+            monthly_rent=monthly_rent,
+            security_deposit=deposit,
+            lease_duration_months=duration_months,
+            tenant_name=tenant_name,
+            tenant_email=user.email,
+            tenant_phone=tenant_profile.phone if tenant_profile else '',
+            tenant_citizenship=tenant_kyc.citizenship_number if tenant_kyc else '',
+            landlord_name=landlord_name,
+            landlord_email=landlord_user.email,
+            landlord_phone=landlord_profile.phone if landlord_profile else '',
+            landlord_kyc_verified=landlord_kyc.status == 'approved' if landlord_kyc else False,
+            property_name=property_obj.title,
+            property_address=f"{property_obj.address}, {property_obj.city}",
+            property_type=prop_type,
+            transaction_id=payment.transaction_id if payment else '',
+            payment_date=payment.payment_date if payment else timezone.now(),
+            amount_paid=payment.amount if payment else booking.total_price,
+        )
+
+        try:
+            Notification.objects.create(
+                recipient=user,
+                notification_type='agreement_created',
+                title='Rental Agreement Ready',
+                message=f"Your rental agreement for {property_obj.title} has been generated. Please review and sign.",
+                related_entity_type='agreement',
+                related_entity_id=agreement.id,
+            )
+        except Exception:
+            pass
+
+        return agreement, None
+    except Exception as e:
+        print(f"[AGREEMENT ERROR] Failed to create agreement for booking {booking.id}: {e}")
+        traceback.print_exc()
+        return None, str(e)
+
+
 # =====================================================
 # AGREEMENT VIEWS
 # =====================================================
@@ -152,6 +225,77 @@ class AgreementListView(generics.ListAPIView):
         return RentalAgreement.objects.filter(
             models.Q(tenant=user) | models.Q(landlord=user)
         ).order_by('-created_at')
+
+
+class AgreementByBookingView(generics.GenericAPIView):
+    """Get the agreement for a specific booking"""
+    serializer_class = RentalAgreementListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, booking_id):
+        agreement = RentalAgreement.objects.filter(booking_id=booking_id).filter(
+            models.Q(tenant=request.user) | models.Q(landlord=request.user)
+        ).first()
+        if not agreement:
+            return Response({'error': 'No agreement found for this booking'}, status=404)
+        serializer = self.get_serializer(agreement)
+        return Response(serializer.data)
+
+
+class CreateAgreementForBookingView(views.APIView):
+    """Create a rental agreement for a booking after payment"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, booking_id):
+        try:
+            booking = Booking.objects.get(id=booking_id, user=request.user)
+        except Booking.DoesNotExist:
+            return Response({'error': 'Booking not found'}, status=404)
+
+        if booking.payment_status != 'completed':
+            return Response({
+                'error': f'Payment not completed for this booking. Status: {booking.payment_status}'
+            }, status=400)
+
+        existing = RentalAgreement.objects.filter(booking=booking).first()
+        if existing:
+            serializer = RentalAgreementListSerializer(existing)
+            return Response({'agreement': serializer.data, 'already_exists': True})
+
+        # Try full-featured creation first, fall back to minimal
+        agreement, error = create_agreement_for_booking(booking, request.user)
+        if not agreement:
+            try:
+                prop = booking.property
+                owner = prop.owner
+                if not owner:
+                    return Response({'error': 'Property owner not found'}, status=500)
+                agreement = RentalAgreement.objects.create(
+                    booking=booking,
+                    property=prop,
+                    tenant=request.user,
+                    landlord=owner,
+                    status='pending_tenant',
+                    agreement_content="Digital Rental Agreement - Generated after payment",
+                    monthly_rent=prop.price or 0,
+                    security_deposit=prop.security_deposit or 0,
+                    lease_duration_months=max(1, round((booking.check_out - booking.check_in).days / 30)),
+                    tenant_name=request.user.get_full_name() or request.user.username,
+                    tenant_email=request.user.email,
+                    landlord_name=owner.get_full_name() or owner.username,
+                    landlord_email=owner.email,
+                    property_name=prop.title,
+                    property_address=f"{prop.address}, {prop.city}",
+                    property_type=dict(Property.PROPERTY_TYPES).get(prop.property_type, prop.property_type),
+                    amount_paid=booking.total_price,
+                )
+            except Exception as fallback_err:
+                print(f"[CREATE AGREEMENT ERROR] Booking {booking_id}: {fallback_err}")
+                traceback.print_exc()
+                return Response({'error': f'Failed to create agreement: {fallback_err}'}, status=500)
+
+        serializer = RentalAgreementListSerializer(agreement)
+        return Response({'agreement': serializer.data, 'already_exists': False})
 
 
 class TenantSignAgreementView(views.APIView):

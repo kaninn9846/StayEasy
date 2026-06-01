@@ -228,6 +228,7 @@ class Booking(models.Model):
     PAYMENT_STATUS_CHOICES = (
         ('unpaid', 'Unpaid'),
         ('paid', 'Paid'),
+        ('completed', 'Completed'),
         ('failed', 'Failed'),
     )
 

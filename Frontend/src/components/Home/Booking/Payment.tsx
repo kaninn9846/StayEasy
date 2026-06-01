@@ -11,6 +11,7 @@ export default function Payment({
   onBack: () => void;
   bookingData?: {
     propertyId?: number;
+    propertyTitle?: string;
     total_price?: number;
     check_in?: string;
     check_out?: string;
@@ -304,7 +305,7 @@ export default function Payment({
           propertyName={bookingData?.propertyTitle || 'Property'}
           paymentType={paymentType === 'full' ? 'Full Payment' : 'Partial Payment'}
           totalAmount={payingNow}
-          onSuccess={(id) => navigate(`/payment-success/${id}`)}
+          onSuccess={(id, agreementId) => navigate(`/payment-success/${id}${agreementId ? `?agreement_id=${agreementId}` : ''}`)}
         />
       )}
     </>

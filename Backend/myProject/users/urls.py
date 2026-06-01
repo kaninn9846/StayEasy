@@ -72,6 +72,8 @@ from .notification_views import (
 from .agreement_views import (
     AgreementDetailView,
     AgreementListView,
+    AgreementByBookingView,
+    CreateAgreementForBookingView,
     TenantSignAgreementView,
     LandlordSignAgreementView,
     AgreementPDFView,
@@ -226,6 +228,8 @@ urlpatterns = [
     # RENTAL AGREEMENT ENDPOINTS
     # =====================================================
     path('agreements/', AgreementListView.as_view(), name='agreement-list'),
+    path('agreements/by-booking/<int:booking_id>/', AgreementByBookingView.as_view(), name='agreement-by-booking'),
+    path('agreements/create-for-booking/<int:booking_id>/', CreateAgreementForBookingView.as_view(), name='agreement-create-for-booking'),
     path('agreements/<int:pk>/', AgreementDetailView.as_view(), name='agreement-detail'),
     path('agreements/<int:agreement_id>/sign-tenant/', TenantSignAgreementView.as_view(), name='agreement-sign-tenant'),
     path('agreements/<int:agreement_id>/sign-landlord/', LandlordSignAgreementView.as_view(), name='agreement-sign-landlord'),
