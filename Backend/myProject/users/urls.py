@@ -21,6 +21,7 @@ from .views import (
     KYCSubmitView,
     KYCStatusView,
     KYCDetailView,
+    ChangePasswordView,
     PropertyCreateView,
     PropertyListView,
     PropertyDetailView,
@@ -32,7 +33,6 @@ from .views import (
     AdminKYCUpdateStatusView,
     AdminKYCStatsView,
     AdminPropertyListView,
-    LandlordDashboardView,
     BookingCreateView,
     UserBookingListView,
     LandlordBookingListView,
@@ -102,6 +102,7 @@ urlpatterns = [
     # User Profile Endpoints
     path('profile/', ProfileView.as_view()),
     path('recent-activity/', RecentActivityView.as_view()),
+    path('change-password/', ChangePasswordView.as_view()),
     path('kyc/submit/', KYCSubmitView.as_view()),
     path('kyc/status/', KYCStatusView.as_view()),
     path('kyc/detail/', KYCDetailView.as_view()),

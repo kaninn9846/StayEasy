@@ -1,5 +1,6 @@
-import { Lock } from 'lucide-react';
+import { Lock, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
+import { changePassword } from '../../services/api';
 
 const LoginSecurity = () => {
   const [isChanging, setIsChanging] = useState(false);
@@ -7,26 +8,46 @@ const LoginSecurity = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('error');
+  const [loading, setLoading] = useState(false);
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     // Simple validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       setMessage('Please fill all fields.');
+      setMessageType('error');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setMessage('New password must be at least 8 characters long.');
+      setMessageType('error');
       return;
     }
     if (newPassword !== confirmPassword) {
       setMessage('New passwords do not match.');
+      setMessageType('error');
       return;
     }
 
-    // Here you would call your backend API to actually change the password
-    setMessage('Password changed successfully!');
-    setIsChanging(false);
-
-    // Reset form
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    setLoading(true);
+    try {
+      await changePassword({
+        old_password: currentPassword,
+        new_password: newPassword,
+      });
+      setMessage('Password changed successfully!');
+      setMessageType('success');
+      setIsChanging(false);
+      // Reset form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setMessage(err.response?.data?.error || 'Failed to change password.');
+      setMessageType('error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -62,28 +83,41 @@ const LoginSecurity = () => {
               placeholder="Current Password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl"
+              disabled={loading}
+              className="w-full p-3 border border-gray-300 rounded-xl disabled:opacity-50"
             />
             <input
               type="password"
-              placeholder="New Password"
+              placeholder="New Password (minimum 8 characters)"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl"
+              disabled={loading}
+              className="w-full p-3 border border-gray-300 rounded-xl disabled:opacity-50"
             />
             <input
               type="password"
               placeholder="Confirm New Password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl"
+              disabled={loading}
+              className="w-full p-3 border border-gray-300 rounded-xl disabled:opacity-50"
             />
-            {message && <p className="text-sm text-red-500">{message}</p>}
+            {message && (
+              <div className={`flex items-center gap-2 p-3 rounded-lg ${
+                messageType === 'success'
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-red-50 text-red-700 border border-red-200'
+              }`}>
+                <AlertCircle size={16} />
+                <p className="text-sm font-medium">{message}</p>
+              </div>
+            )}
             <button
-              className="w-full px-6 py-2.5 bg-[#A989C8] text-white rounded-xl text-sm font-medium hover:bg-[#9676b5] transition-colors shadow-md shadow-[#A989C8]/20"
+              className="w-full px-6 py-2.5 bg-[#A989C8] text-white rounded-xl text-sm font-medium hover:bg-[#9676b5] transition-colors shadow-md shadow-[#A989C8]/20 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleChangePassword}
+              disabled={loading}
             >
-              Save Password
+              {loading ? 'Saving...' : 'Save Password'}
             </button>
           </div>
         )}

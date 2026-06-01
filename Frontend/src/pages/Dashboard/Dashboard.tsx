@@ -349,11 +349,15 @@ const Dashboard = () => {
                       <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold text-gray-900">Your Properties</h2>
                         <button
-                          className="flex items-center gap-2 bg-[#A989C8] hover:bg-[#9b7bb8] text-white px-4 py-2 rounded-xl text-sm font-medium transition-all"
+                          className="flex items-center gap-2 bg-[#A989C8] hover:bg-[#9b7bb8] text-white px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={() => navigate("/add-property")}
+                          disabled={dashboard ? !dashboard.can_add_property : false}
                         >
                           <Plus size={16} /> Add Property
                         </button>
+                        {dashboard && !dashboard.can_add_property && (
+                          <p className="text-red-500 text-xs mt-1">*Approve your KYC first to add properties</p>
+                        )}
                       </div>
                       {properties.map((property) => (
                         <div key={property.id} className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-lg transition-shadow">

@@ -507,6 +507,31 @@ class ProfileView(views.APIView):
 
 
 # ----------------------
+# CHANGE PASSWORD
+# ----------------------
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if not old_password or not new_password:
+            raise ValidationError({'error': 'Both old and new password are required.'})
+
+        if not user.check_password(old_password):
+            raise ValidationError({'error': 'Old password is incorrect.'})
+
+        if len(new_password) < 8:
+            raise ValidationError({'error': 'Password must be at least 8 characters.'})
+
+        user.set_password(new_password)
+        user.save()
+        return Response({'message': 'Password changed successfully.'})
+
+
+# ----------------------
 # KYC SUBMIT
 # ----------------------
 class KYCSubmitView(generics.CreateAPIView):
@@ -550,6 +575,8 @@ class KYCDetailView(APIView):
                 "phone_number": kyc.phone_number,
                 "citizenship_number": kyc.citizenship_number,
                 "document_image": f"/uploads/{kyc.document_image.name}" if kyc.document_image else None,
+                "document_back_image": f"/uploads/{kyc.document_back_image.name}" if kyc.document_back_image else None,
+                "selfie_image": f"/uploads/{kyc.selfie_image.name}" if kyc.selfie_image else None,
                 "status": kyc.status,
                 "submitted_at": kyc.submitted_at,
                 "verified_by": {

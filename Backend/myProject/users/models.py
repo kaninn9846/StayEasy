@@ -110,8 +110,10 @@ class KYC(models.Model):
     phone_number = models.CharField(max_length=20)
     citizenship_number = models.CharField(max_length=100)
 
-    # uploaded document
+    # uploaded documents
     document_image = models.ImageField(upload_to='kyc_documents/')
+    document_back_image = models.ImageField(upload_to='kyc_documents/', null=True, blank=True)
+    selfie_image = models.ImageField(upload_to='kyc_selfies/', null=True, blank=True)
 
     # verification status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

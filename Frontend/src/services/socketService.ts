@@ -70,17 +70,19 @@ class SocketService {
     });
 
     this.socket.on("connect", () => {
-      console.log("✅ Socket connected:", this.socket?.id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("✅ Socket connected:", this.socket?.id);
+      }
     });
 
     this.socket.on("disconnect", () => {
-      console.log("❌ Socket disconnected");
+      if (process.env.NODE_ENV === 'development') {
+        console.log("❌ Socket disconnected");
+      }
     });
 
-    this.socket.on("connect_error", (err) => {
-      if (!this.socket?.connected) {
-        console.warn("🟡 Socket reconnect attempt...");
-      }
+    this.socket.on("connect_error", () => {
+      // silently retry — socket server may not be running
     });
 
     return this.socket;

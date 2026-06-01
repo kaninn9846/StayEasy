@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import KYCStep1 from "./KYCStep1";
 import KYCStep2 from "./KYCStep2";
 import KYCStep3 from "./KYCStep3";
 import axios from "axios";
+import { getKYCStatus } from "../../services/api";
 
 // ✅ KYC Form Data Type
 export interface KYCFormData {
@@ -11,6 +12,8 @@ export interface KYCFormData {
   phone_number: string;
   citizenship_number: string;
   document_image: File | null;
+  document_back_image: File | null;
+  selfie_image: File | null;
 }
 
 function KYCProgress({ step }: { step: number }) {
@@ -49,13 +52,41 @@ export default function KYCContainer() {
     phone_number: "",
     citizenship_number: "",
     document_image: null,
+    document_back_image: null,
+    selfie_image: null,
   });
 
   /* 🔹 STEP NAVIGATION */
   const nextStep = () => {
     setError(null);
+
+    if (step === 1) {
+      if (!formData.citizenship_number.trim()) {
+        setError("You must fill this field to continue.");
+        return;
+      }
+    }
+
+    if (step === 2) {
+      if (!formData.document_image) {
+        setError("Please upload the front of your citizenship document.");
+        return;
+      }
+      if (!formData.document_back_image) {
+        setError("Please upload the back of your citizenship document.");
+        return;
+      }
+    }
+
+    if (step === 3) {
+      if (!formData.selfie_image) {
+        setError("Please upload a photo of yourself.");
+        return;
+      }
+    }
+
     if (step < 3) setStep(step + 1);
-    else handleSubmit();
+    else checkStatusAndSubmit();
   };
 
   const prevStep = () => {
@@ -70,6 +101,22 @@ export default function KYCContainer() {
   /* 🔹 SAVE & EXIT */
   const saveAndExit = () => {
     navigate("/dashboard");
+  };
+
+  /* 🔹 CHECK KYC STATUS BEFORE SUBMIT */
+  const checkStatusAndSubmit = async () => {
+    setError(null);
+    try {
+      const status = await getKYCStatus();
+      if (status?.status && status.status !== 'not_submitted') {
+        alert("Your KYC has already been submitted.");
+        navigate("/dashboard");
+        return;
+      }
+    } catch {
+      // continue with submit
+    }
+    handleSubmit();
   };
 
   /* 🔹 SUBMIT TO DJANGO BACKEND */
@@ -98,6 +145,12 @@ export default function KYCContainer() {
       submitData.append("phone_number", formData.phone_number);
       submitData.append("citizenship_number", formData.citizenship_number);
       submitData.append("document_image", formData.document_image);
+      if (formData.document_back_image) {
+        submitData.append("document_back_image", formData.document_back_image);
+      }
+      if (formData.selfie_image) {
+        submitData.append("selfie_image", formData.selfie_image);
+      }
 
       // ✅ Get JWT token from localStorage
       const token = localStorage.getItem("access");
@@ -118,13 +171,11 @@ export default function KYCContainer() {
       );
 
       // ✅ Success - redirect to dashboard
-      console.log("KYC Submitted Successfully:", response.data);
-      alert("KYC submitted successfully!");
+      alert("KYC submitted successfully! It will be reviewed by an admin.");
       navigate("/dashboard");
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message || "Failed to submit KYC";
       setError(errorMsg);
-      console.error("KYC Submission Error:", err);
     } finally {
       setLoading(false);
     }

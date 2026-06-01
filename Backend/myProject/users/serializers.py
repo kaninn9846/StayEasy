@@ -187,6 +187,8 @@ class KYCSerializer(serializers.ModelSerializer):
             "phone_number",
             "citizenship_number",
             "document_image",
+            "document_back_image",
+            "selfie_image",
             "status",
             "submitted_at",
         ]
@@ -214,6 +216,8 @@ class KYCListSerializer(serializers.ModelSerializer):
             "phone_number",
             "citizenship_number",
             "document_image",
+            "document_back_image",
+            "selfie_image",
             "status",
             "submitted_at",
             "verified_by_info",
@@ -297,6 +301,23 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         data.pop('landlord', None)
         return super().to_internal_value(data)
 
+    def validate_images(self, images):
+        """Validate that images meet minimum and maximum requirements"""
+        MIN_IMAGES = 3
+        MAX_IMAGES = 10
+        
+        if len(images) < MIN_IMAGES:
+            raise serializers.ValidationError(
+                f"Minimum {MIN_IMAGES} images required. Provided: {len(images)}"
+            )
+        
+        if len(images) > MAX_IMAGES:
+            raise serializers.ValidationError(
+                f"Maximum {MAX_IMAGES} images allowed. Provided: {len(images)}"
+            )
+        
+        return images
+
     def create(self, validated_data):
         images = validated_data.pop("images", [])
         
@@ -341,12 +362,18 @@ class PropertyUpdateSerializer(serializers.ModelSerializer):
         return super().to_internal_value(data)
 
     def update(self, instance, validated_data):
+        MIN_IMAGES = 3
+        MAX_IMAGES = 10
+        
         images = validated_data.pop("images", [])
         existing_image_ids = validated_data.pop("existing_image_ids", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+
+        # Track existing images after deletion
+        remaining_images = instance.images.count()
 
         if existing_image_ids is not None:
             try:
@@ -356,11 +383,26 @@ class PropertyUpdateSerializer(serializers.ModelSerializer):
             for img in instance.images.all():
                 if img.id not in existing_ids:
                     img.delete()
+            remaining_images = len(existing_ids)
 
+        # Add new images
         for image in images:
             PropertyImage.objects.create(
                 property=instance,
                 image=image
+            )
+        
+        # Validate total images after update
+        total_images = remaining_images + len(images)
+        
+        if total_images < MIN_IMAGES:
+            raise serializers.ValidationError(
+                f"Minimum {MIN_IMAGES} images required. You have {total_images} image(s)."
+            )
+        
+        if total_images > MAX_IMAGES:
+            raise serializers.ValidationError(
+                f"Maximum {MAX_IMAGES} images allowed. You tried to add {total_images} image(s)."
             )
 
         return instance

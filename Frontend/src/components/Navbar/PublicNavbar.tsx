@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import chatService from "../../services/chatService";
 import socketService from "../../services/socketService";
 import { getKYCStatus, getAgreements, getRefundRequests } from "../../services/api";
@@ -15,6 +16,7 @@ export default function PublicNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [unread, setUnread] = useState(0);
@@ -99,43 +101,43 @@ export default function PublicNavbar() {
 
   const navLinks = role === "owner"
     ? [
-        { to: "/dashboard", label: "Dashboard" },
-        { to: "/properties", label: "Properties" },
-        { to: "/about", label: "About Us" },
+        { to: "/dashboard", label: t('navbar_dashboard') },
+        { to: "/properties", label: t('navbar_properties') },
+        { to: "/about", label: t('navbar_about') },
       ]
     : [
-        { to: "/home", label: "Home" },
+        { to: "/home", label: t('navbar_home') },
         ...(role === "tenant"
           ? [
-              { to: "/my-bookings", label: "My Bookings" },
-              { to: "/favorites", label: "Favorites" },
+              { to: "/my-bookings", label: t('navbar_bookings') },
+              { to: "/favorites", label: t('navbar_favorites') },
             ]
           : []),
-        { to: "/about", label: "About Us" },
+        { to: "/about", label: t('navbar_about') },
       ];
 
   const isOwner = role === "owner";
 
   const menuItems = isOwner
     ? [
-        { section: "Account", items: [
-          { label: "Profile Settings", icon: Settings, to: "/profile" },
-          { label: "Complete KYC", icon: Shield, to: "/kyc", badge: kycPending ? "pending" : null },
+        { section: t('navbar_account'), items: [
+          { label: t('navbar_profile_settings'), icon: Settings, to: "/profile" },
+          { label: t('navbar_complete_kyc'), icon: Shield, to: "/kyc", badge: kycPending ? "pending" : null },
         ]},
-        { section: "Management", items: [
-          { label: "View Tenants", icon: Users, to: "/tenant" },
-          { label: "Agreements", icon: FileText, to: "/landlord/agreements", badge: unsignedCount > 0 ? unsignedCount : null },
-          { label: "Payment History", icon: CreditCard, to: "/payment-history" },
-          { label: "Refund Requests", icon: RotateCcw, to: "/refunds", badge: pendingRefundCount > 0 ? pendingRefundCount : null },
+        { section: t('navbar_management'), items: [
+          { label: t('navbar_view_tenants'), icon: Users, to: "/tenant" },
+          { label: t('navbar_agreements'), icon: FileText, to: "/landlord/agreements", badge: unsignedCount > 0 ? unsignedCount : null },
+          { label: t('navbar_payment_history'), icon: CreditCard, to: "/payment-history" },
+          { label: t('navbar_refund_requests'), icon: RotateCcw, to: "/refunds", badge: pendingRefundCount > 0 ? pendingRefundCount : null },
         ]},
-        { section: "Actions", items: [
-          { label: "Add Property", icon: PlusCircle, to: "/add-property" },
+        { section: t('navbar_actions'), items: [
+          { label: t('navbar_properties_add'), icon: PlusCircle, to: "/add-property" },
         ]},
       ]
     : [
         { section: "", items: [
-          { label: "Profile Settings", icon: Settings, to: "/profile" },
-          { label: "Agreements", icon: FileText, to: "/agreements" },
+          { label: t('navbar_profile_settings'), icon: Settings, to: "/profile" },
+          { label: t('navbar_agreements'), icon: FileText, to: "/agreements" },
         ]},
       ];
 
@@ -243,7 +245,7 @@ export default function PublicNavbar() {
                       className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition"
                     >
                       <LogOut size={17} className="shrink-0" />
-                      <span className="font-medium">Logout</span>
+                      <span className="font-medium">{t('navbar_logout')}</span>
                     </button>
                   </div>
                 )}
@@ -253,7 +255,7 @@ export default function PublicNavbar() {
                 to="/login"
                 className="bg-[#A989C8] text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-[#9b7bb8]"
               >
-                Sign In
+                {t('navbar_sign_in')}
               </Link>
             )}
 
@@ -295,7 +297,7 @@ export default function PublicNavbar() {
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:text-[#A989C8] hover:bg-gray-50"
               >
                 <MessageCircle size={18} />
-                Messages
+                {t('navbar_messages')}
                 {unread > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold">{unread}</span>
                 )}
@@ -328,7 +330,7 @@ export default function PublicNavbar() {
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 w-full text-left"
               >
                 <LogOut size={18} />
-                Logout
+                {t('navbar_logout')}
               </button>
             </div>
           </div>

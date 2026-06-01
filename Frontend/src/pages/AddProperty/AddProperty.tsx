@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Home } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useProperties } from '../../context/PropertyContext';
-import { getPropertyDetail } from '../../services/api';
+import { getPropertyDetail, getKYCStatus } from '../../services/api';
 
 // Component Imports
 import Stepper from '../../components/AddProperty/Stepper';
@@ -54,6 +54,23 @@ const AddProperty = () => {
   const [newPropertyId, setNewPropertyId] = useState<number | null>(null);
 
   const [existingImages, setExistingImages] = useState<Array<{id: number, image: string}>>([]);
+
+  // KYC guard: redirect if not approved
+  useEffect(() => {
+    if (id) return; // editing existing property — skip KYC check
+    const checkKYC = async () => {
+      try {
+        const data = await getKYCStatus();
+        if (data?.status && data.status !== 'approved') {
+          alert('Please verify your KYC first before adding a property.');
+          navigate('/kyc');
+        }
+      } catch {
+        navigate('/login');
+      }
+    };
+    checkKYC();
+  }, [id, navigate]);
 
   // Form State
   const [formData, setFormData] = useState<FormDataType>({

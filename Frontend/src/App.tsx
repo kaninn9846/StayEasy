@@ -38,7 +38,6 @@ import Chat from "./pages/Chat/Chat";
 import AgreementDetail from "./pages/Agreements/AgreementDetail";
 import AgreementList from "./pages/Agreements/AgreementList";
 import LandlordAgreements from "./pages/Agreements/LandlordAgreements";
-import AdminAgreements from "./pages/Agreements/AdminAgreements";
 import AdminAgreementDetail from "./pages/Agreements/AdminAgreementDetail";
 
 // --- 3. BOOKING FEATURES ---
@@ -139,10 +138,6 @@ export default function App() {
         element={<RoleBasedRoute allowedRoles={['admin']}><BookingManagement /></RoleBasedRoute>} 
       />
 
-      <Route 
-        path="/admin/agreements" 
-        element={<RoleBasedRoute allowedRoles={['admin']}><AdminAgreements /></RoleBasedRoute>} 
-      />
       <Route 
         path="/admin/agreements/:id" 
         element={<RoleBasedRoute allowedRoles={['admin']}><AdminAgreementDetail /></RoleBasedRoute>} 

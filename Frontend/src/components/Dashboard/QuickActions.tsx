@@ -1,8 +1,24 @@
 import { useNavigate } from "react-router-dom";
 import { FileText } from "lucide-react";
+import { getKYCStatus } from "../../services/api";
 
 const QuickActions = () => {
   const navigate = useNavigate();
+
+  const handleAddProperty = async () => {
+    try {
+      const data = await getKYCStatus();
+      if (data?.status && data.status !== 'approved') {
+        alert('Please verify your KYC first before adding a property.');
+        navigate('/kyc');
+        return;
+      }
+    } catch {
+      navigate('/login');
+      return;
+    }
+    navigate("/add-property");
+  };
 
   return (
     <div className="bg-white border rounded-xl p-5">
@@ -11,7 +27,7 @@ const QuickActions = () => {
       <div className="space-y-3">
         {/* ✅ Navigate to Add Property */}
         <button
-          onClick={() => navigate("/add-property")}
+          onClick={handleAddProperty}
           className="w-full bg-primary text-white py-2 rounded-lg"
         >
           Add Property

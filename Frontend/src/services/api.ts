@@ -61,6 +61,16 @@ export const updateProfile = async (data: any) => {
   }
 };
 
+export const changePassword = async (data: { old_password: string; new_password: string }) => {
+  try {
+    const response = await API.post("change-password/", data);
+    return response.data;
+  } catch (error) {
+    console.error("Password change error:", error);
+    throw error;
+  }
+};
+
 export const getKYCDetail = async () => {
   try {
     const response = await API.get("kyc/detail/");
@@ -262,17 +272,24 @@ export const getLandlordPropertyBookings = async (propertyId: number) => {
 
 export const getLandlordDashboard = async () => {
   try {
-    // Get all landlord properties and derive stats
     const properties = await getLandlordProperties();
     const totalProperties = Array.isArray(properties) ? properties.length : 0;
     const availableProperties = Array.isArray(properties) 
       ? properties.filter((p: any) => p.available === true).length 
       : 0;
     
+    let canAddProperty = false;
+    try {
+      const kyc = await getKYCStatus();
+      canAddProperty = kyc?.status === 'approved';
+    } catch {
+      canAddProperty = false;
+    }
+
     return {
       total_properties: totalProperties,
       available_properties: availableProperties,
-      can_add_property: true, // Based on your backend logic
+      can_add_property: canAddProperty,
     };
   } catch (error) {
     console.error("Landlord dashboard fetch error:", error);
